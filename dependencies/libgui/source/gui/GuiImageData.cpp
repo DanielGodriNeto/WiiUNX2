@@ -16,6 +16,7 @@
  ****************************************************************************/
 
 #include <gui/GuiImageData.h>
+#include <gui/RoundedCorners.h>
 #include <gui/memory.h>
 #include <malloc.h>
 #include <stdint.h>
@@ -182,6 +183,16 @@ void GuiImageData::loadImage(const uint8_t *img, int32_t imgSize, GX2TexClampMod
     //! initialize the sampler
     sampler = new GX2Sampler;
     GX2InitSampler(sampler, textureClamp, GX2_TEX_XY_FILTER_MODE_LINEAR);
+}
+
+bool GuiImageData::roundCorners(float radiusFraction) {
+    if(!texture || !texture->surface.image || texture->surface.format!=GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8) return false;
+    auto &surface=texture->surface;
+    bool ok=nx::clipRoundedRgba(static_cast<uint32_t *>(surface.image),surface.imageSize/sizeof(uint32_t),
+                              surface.width,surface.height,surface.pitch,
+                              std::min(surface.width,surface.height)*radiusFraction);
+    if(ok) GX2Invalidate(GX2_INVALIDATE_MODE_CPU_TEXTURE,surface.image,surface.imageSize);
+    return ok;
 }
 
 void GuiImageData::gdImageToUnormR8G8B8A8(gdImagePtr gdImg, uint32_t *imgBuffer, uint32_t width, uint32_t height, uint32_t pitch) {

@@ -20,6 +20,7 @@
 #include "utils/AsyncExecutor.h"
 #include "utils/logger.h"
 #include <coreinit/core.h>
+#include <coreinit/memory.h>
 #include <coreinit/foreground.h>
 #include <coreinit/title.h>
 #include <gui/FreeTypeGX.h>
@@ -152,7 +153,13 @@ bool Application::procUI() {
 
                     //! setup default Font
                     DEBUG_FUNCTION_LINE("Initialize main font system");
-                    fontSystem = new FreeTypeGX(Resources::GetFile("font.ttf"), Resources::GetFileSize("font.ttf"), true);
+                    void *systemFont=nullptr;uint32_t systemFontSize=0;
+                    if(OSGetSharedData(OS_SHAREDDATATYPE_FONT_STANDARD,0,&systemFont,&systemFontSize) && systemFont && systemFontSize) {
+                        fontSystem=new FreeTypeGX(static_cast<const uint8_t *>(systemFont),systemFontSize,false);
+                        DEBUG_FUNCTION_LINE("Using console system font");
+                    } else {
+                        fontSystem=new FreeTypeGX(Resources::GetFile("font.ttf"),Resources::GetFileSize("font.ttf"),true);
+                    }
                     GuiText::setPresetFont(fontSystem);
 
                     if (mainWindow == nullptr) {

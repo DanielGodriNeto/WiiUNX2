@@ -15,4 +15,4 @@ if(Test-Path -LiteralPath $target) {
 }
 Copy-Item -LiteralPath $binary -Destination $target
 if((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -ne $expected) {throw 'Copied file checksum mismatch. Restore the backup before booting.'}
-Write-Host "WiiUNX2 0.5 copied to $target. Plugins and modules were not changed."
+Write-Host "WiiUNX2 0.5.1 copied to $target. Plugins and modules were not changed."

@@ -21,20 +21,36 @@ Text '11:52 AM' 23 1070 76
 Icon 'nxNetwork.png' 1160 76
 $pen=[Drawing.Pen]::new([Drawing.Color]::DimGray,2);$g.DrawRectangle($pen,1199,67,32,18);$pen.Dispose()
 $green=[Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#43A02C'));$g.FillRectangle($green,1203,71,24,10);$green.Dispose()
-for($i=0;$i -lt 5;$i++) { Icon 'nxTileShadow.png' (232+$i*272) 330; $g.FillRectangle([Drawing.Brushes]::WhiteSmoke,(104+$i*272),202,256,256); Icon 'nxTileMask.png' (232+$i*272) 330 }
+for($i=0;$i -lt 5;$i++) { Icon 'nxTileShadow.png' (232+$i*272) 330; Icon 'nxTileBlank.png' (232+$i*272) 330 }
 $gradient=[Drawing.Drawing2D.LinearGradientBrush]::new([Drawing.Point]::new(104,202),[Drawing.Point]::new(360,458),[Drawing.Color]::FromArgb(50,143,195),[Drawing.Color]::FromArgb(74,204,178))
-$g.FillRectangle($gradient,104,202,256,256);$gradient.Dispose()
+$path=[Drawing.Drawing2D.GraphicsPath]::new()
+$path.AddArc(104,202,20,20,180,90);$path.AddArc(340,202,20,20,270,90)
+$path.AddArc(340,438,20,20,0,90);$path.AddArc(104,438,20,20,90,90);$path.CloseFigure()
+$g.FillPath($gradient,$path);$gradient.Dispose();$path.Dispose()
 Text 'Wii U' 47 232 308 '#FFFFFF'
 Text 'YOUR SOFTWARE' 18 232 365 '#FFFFFF'
-Icon 'nxTileMask.png' 232 330
 Icon 'nxDock.png' 614 560
 $files=@('nxFriends.png','nxBrowser.png','nxDownloads.png','nxShop.png','nxMii.png','nxData.png','nxControllers.png','nxSettings.png','nxPower.png')
 for($i=0;$i -lt 9;$i++){if($i -eq 3){Icon 'nxRing.png' (270+$i*86) 560};Icon $files[$i] (270+$i*86) 560}
 Text 'Nintendo eShop' 23 640 626 '#1F5C9E'
 Text 'WiiUNX2' 19 95 683 '#525252'
-Text 'Y  Search' 19 800 683
-Text '-  Sort' 19 920 683
-Text '+  Options     A  OK' 19 1090 683
+# Same right-anchored badge/label/gap rules as the runtime footer.
+$right=1224
+$captions=@('Search','Sort','Options','OK');$buttons=@('Y','Minus','Plus','A')
+$font=[Drawing.Font]::new('Segoe UI',20,[Drawing.FontStyle]::Regular,[Drawing.GraphicsUnit]::Pixel)
+$format=[Drawing.StringFormat]::GenericTypographic.Clone()
+for($i=3;$i -ge 0;$i--) {
+    $textWidth=$g.MeasureString($captions[$i],$font,1000,$format).Width
+    $left=$right-(28+9+$textWidth)
+    Icon ("nxButton"+$buttons[$i]+".png") ($left+14) 674
+    $g.DrawString($captions[$i],$font,[Drawing.Brushes]::DarkSlateGray,[Drawing.PointF]::new(($left+37),660),$format)
+    $right=$left-28
+}
+$font.Dispose();$format.Dispose()
 Text '24 software   /   Name A-Z' 18 640 487 '#666666'
 $bmp.Save((Join-Path $root 'layout-preview.png'),[Drawing.Imaging.ImageFormat]::Png)
+Icon 'nxTileFocus.png' 232 330
+$bmp.Save((Join-Path $root 'layout-focus-preview.png'),[Drawing.Imaging.ImageFormat]::Png)
+$crop=$bmp.Clone([Drawing.Rectangle]::new(88,186,288,288),$bmp.PixelFormat)
+$crop.Save((Join-Path $root 'card-detail-preview.png'),[Drawing.Imaging.ImageFormat]::Png);$crop.Dispose()
 $g.Dispose();$bmp.Dispose()

@@ -46,6 +46,9 @@ private:
     void titleChanged(gameInfo *info);
     void listChanged(GameList *list);
     void draw(CVideo *v);
+    void drawFooter(CVideo *v);
+    void footerAction(size_t action);
+    void showOptions();
     void activate();
     void launch(uint64_t id);
     void move(int delta);
@@ -73,11 +76,11 @@ private:
     ViewState restore;
     std::recursive_mutex guiMutex, tilesMutex;
     std::vector<Tile> tiles;
-    GuiImage background, blank, focus, modalShade, modalPanel, batteryOutline, batteryInside, batteryFill, batteryTip;
-    GuiText title, clockText, footer, label, message, brand, hint, accountHeading, profileName, accountHelp;
+    GuiImage background, modalShade, modalPanel, batteryOutline, batteryInside, batteryFill, batteryTip;
+    GuiText title, clockText, label, message, brand, hint, accountHeading, profileName, accountHelp;
     std::string lastTitle, lastLabel;
     GuiImage accountPanel, accountCard, accountFocus;
-    GuiText libraryStatus, searchHeading, searchQuery, searchHelp, searchButton, sortButton;
+    GuiText libraryStatus, searchHeading, searchQuery, searchHelp;
     GuiImage searchPanel, keyCard, keyFocus;
     std::vector<Account> accounts;
     bool actReady=false, accountsOpen=false;
@@ -85,7 +88,13 @@ private:
     uint8_t activeSlot=0;
     std::vector<GuiImageData *> assetData;
     std::vector<std::unique_ptr<GuiImage>> dock;
-    std::unique_ptr<GuiImage> profile, ring, network, tileMask, tileFocus, tileShadow, dockSurface;
+    std::unique_ptr<GuiImage> profile, ring, network, tileBlank, tileFocus, tileShadow, dockSurface;
+    struct FooterPrompt {
+        std::unique_ptr<GuiImage> badge;
+        std::unique_ptr<GuiText> caption;
+        float left=0,right=0;
+    };
+    std::vector<FooterPrompt> prompts;
     bool acReady=false, connected=false;
     int battery=-1;
     size_t selected = 0;

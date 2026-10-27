@@ -26,14 +26,12 @@ static const char *keys="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 static bool isMenu(uint64_t id) { return (id >> 32) == 0x00050010 && ((id & 0xffffff00) == 0x10040000 || (id & 0xffffff00) == 0x10040100 || (id & 0xffffff00) == 0x10040200); }
 
 MainWindow::MainWindow(int32_t w, int32_t h)
- : background(w,h,GX2Color{233,233,233,255}), blank(256,256,GX2Color{247,247,247,255}),
-   focus(268,268,GX2Color{35,197,218,255}), modalShade(w,h,GX2Color{0,0,0,130}),
+ : background(w,h,GX2Color{233,233,233,255}), modalShade(w,h,GX2Color{0,0,0,130}),
    modalPanel(960,340,GX2Color{250,250,250,255}),
    batteryOutline(32,18,GX2Color{70,70,70,255}), batteryInside(28,14,GX2Color{233,233,233,255}),
    batteryFill(24,10,GX2Color{67,160,44,255}), batteryTip(3,8,GX2Color{70,70,70,255}),
    title("Loading software...",26,glm::vec4(.12f,.12f,.12f,1)),
    clockText("",23,glm::vec4(.1f,.1f,.1f,1)),
-   footer("+  Options     A  OK",19,glm::vec4(.12f,.12f,.12f,1)),
    label("",23,glm::vec4(.12f,.36f,.62f,1)),
    message("",26,glm::vec4(.12f,.12f,.12f,1)),
    brand("WiiUNX2",19,glm::vec4(.32f,.32f,.32f,1)),
@@ -47,7 +45,6 @@ MainWindow::MainWindow(int32_t w, int32_t h)
    searchHeading("Find software",30,glm::vec4(.12f,.12f,.12f,1)),
    searchQuery("",27,glm::vec4(.12f,.36f,.62f,1)),
    searchHelp("D-pad: choose key   A: type   X: erase   +: done   B: close",20,glm::vec4(.3f,.3f,.3f,1)),
-   searchButton("Y  Search",19,glm::vec4(.12f,.12f,.12f,1)),sortButton("-  Sort",19,glm::vec4(.12f,.12f,.12f,1)),
    searchPanel(1120,520,GX2Color{250,250,250,255}),
    keyCard(84,54,GX2Color{235,235,235,255}),keyFocus(90,60,GX2Color{35,197,218,255}),width(w),height(h) {
     title.setMaxWidth(1070,GuiText::DOTTED);
@@ -60,7 +57,15 @@ MainWindow::MainWindow(int32_t w, int32_t h)
     for (auto name:dockFiles) dock.push_back(asset(name));
     profile=asset("nxProfile.png"); ring=asset("nxRing.png");
     network=asset("nxNetwork.png");
-    tileMask=asset("nxTileMask.png");tileFocus=asset("nxTileFocus.png");tileShadow=asset("nxTileShadow.png");dockSurface=asset("nxDock.png");
+    tileBlank=asset("nxTileBlank.png");tileFocus=asset("nxTileFocus.png");tileShadow=asset("nxTileShadow.png");dockSurface=asset("nxDock.png");
+    const char *badges[]={"nxButtonY.png","nxButtonMinus.png","nxButtonPlus.png","nxButtonA.png"};
+    const char *captions[]={"Search","Sort","Options","OK"};
+    for(int i=0;i<4;++i) {
+        FooterPrompt prompt;prompt.badge=asset(badges[i]);
+        prompt.caption=std::make_unique<GuiText>(captions[i],20,glm::vec4(.15f,.15f,.15f,1));
+        prompt.caption->setAlignment(ALIGN_LEFT | FTGX_ALIGN_BASELINE);
+        prompts.push_back(std::move(prompt));
+    }
     acReady=NNResult_IsSuccess(ACInitialize());
     for(int i=0;i<40;++i) {
         std::string caption=i<36 ? std::string(1,keys[i]) : i==36 ? "Space":i==37 ? "Erase":i==38 ? "Clear":"Done";
@@ -79,13 +84,14 @@ MainWindow::~MainWindow() {
     gameList.titleAdded.disconnect(this);
     gameList.titleUpdated.disconnect(this);
     gameList.titleListChanged.disconnect(this);
-    tiles.clear(); dock.clear(); profile.reset(); ring.reset(); network.reset();tileMask.reset();tileFocus.reset();tileShadow.reset();dockSurface.reset();
+    tiles.clear(); dock.clear();prompts.clear(); profile.reset(); ring.reset(); network.reset();tileBlank.reset();tileFocus.reset();tileShadow.reset();dockSurface.reset();
     for(auto *data:assetData) Resources::RemoveImageData(data);
     if(acReady) ACFinalize();
 }
 void MainWindow::resume(FreeTypeGX *font) {
     launching=false;
-    for(auto *text:{&title,&clockText,&footer,&label,&message,&brand,&hint,&accountHeading,&profileName,&accountHelp,&libraryStatus,&searchHeading,&searchQuery,&searchHelp,&searchButton,&sortButton}) text->setFont(font);
+    for(auto *text:{&title,&clockText,&label,&message,&brand,&hint,&accountHeading,&profileName,&accountHelp,&libraryStatus,&searchHeading,&searchQuery,&searchHelp}) text->setFont(font);
+    for(auto &prompt:prompts) prompt.caption->setFont(font);
 }
 void MainWindow::listChanged(GameList *) {}
 void MainWindow::titleChanged(gameInfo *info) {
@@ -184,9 +190,8 @@ void MainWindow::draw(CVideo *v) {
         if(x < -140 || x > 1420) continue;
         drawImage(*tileShadow,v,x,330);
         if(i==selected && focusRow==0 && !visible.empty()) drawImage(*tileFocus,v,x,330);
-        drawImage(blank,v,x,330);
         if(i<visible.size() && tiles[visible[i]].image) drawImage(*tiles[visible[i]].image,v,x,330);
-        drawImage(*tileMask,v,x,330);
+        else drawImage(*tileBlank,v,x,330);
     }
     drawImage(*dockSurface,v,614,560);
     for(int i=0;i<9;++i) {
@@ -195,8 +200,7 @@ void MainWindow::draw(CVideo *v) {
         drawImage(*dock[i],v,x,560);
     }
     drawText(label,v,640,626);
-    drawText(footer,v,1090,683);
-    drawText(searchButton,v,800,683);drawText(sortButton,v,920,683);
+    drawFooter(v);
     drawText(libraryStatus,v,640,487);
     drawText(brand,v,95,683);
     if(accountsOpen) drawAccounts(v);
@@ -273,9 +277,9 @@ void MainWindow::update(GuiController *c) {
                 if(focusRow==1 && dockIndex==i) activate();
                 else { dockIndex=i; focusRow=1; }
             }
-        } else if(y>=658 && x>=730 && x<865) {searchOpen=true;searchQuery.setText(query.empty()?"Type a title...":query.c_str());}
-        else if(y>=658 && x>=865 && x<975) {sortMode=(sortMode+1)%3;rebuildView();}
-        else if(x>=35 && x<125 && y>=30 && y<125) openAccounts();
+        } else if(y>=650 && y<=704) {
+            for(size_t i=0;i<prompts.size();++i) if(x>=prompts[i].left-8 && x<=prompts[i].right+8) {footerAction(i);break;}
+        } else if(x>=35 && x<125 && y>=30 && y<125) openAccounts();
         return;
     }
     uint32_t directions=c->data.buttons_h & (T::BUTTON_LEFT|T::BUTTON_RIGHT|T::STICK_L_LEFT|T::STICK_L_RIGHT);
@@ -289,12 +293,7 @@ void MainWindow::update(GuiController *c) {
     if(pressed&T::BUTTON_B) {focusRow=0;if(!query.empty()){query.clear();rebuildView();}}
     if(pressed&T::BUTTON_L) move(-4);
     if(pressed&T::BUTTON_R) move(4);
-    if(pressed&T::BUTTON_PLUS) {
-        if(focusRow==0 && !visible.empty()) {
-            char id[32]; snprintf(id,sizeof(id),"%016llX",(unsigned long long)selectedTile().id);
-            showMessage(selectedTile().name+"\n\nTitle ID: "+id+"\n"+selectedTile().path);
-        } else showMessage("WiiUNX2 0.5 experimental\n\nD-pad / stick: select   A: open   B: back\nL / R: skip four titles\nTouch once to select, again to open");
-    }
+    if(pressed&T::BUTTON_PLUS) showOptions();
     if(pressed&T::BUTTON_A) activate();
 }
 void MainWindow::activate() {
@@ -357,6 +356,7 @@ void MainWindow::loadVisibleIcons() {
             if(!result.bytes.empty()) {
                 auto data=std::make_unique<GuiImageData>(result.bytes.data(),result.bytes.size(),GX2_TEX_CLAMP_MODE_CLAMP);
                 if(data->getTexture() && data->getSampler() && data->getWidth()>0 && data->getHeight()>0) {
+                    data->roundCorners();
                     tile.data=std::move(data);tile.image=std::make_unique<GuiImage>(tile.data.get());
                     tile.image->setScaleX(256.f/tile.data->getWidth());tile.image->setScaleY(256.f/tile.data->getHeight());
                 }
@@ -475,4 +475,30 @@ void MainWindow::drawSearch(CVideo *v) {
         drawImage(keyCard,v,x,y);drawText(*keyLabels[i],v,x,y);
     }
     drawText(searchHelp,v,640,580);
+}
+
+void MainWindow::showOptions() {
+        if(focusRow==0 && !visible.empty()) {
+            char id[32]; snprintf(id,sizeof(id),"%016llX",(unsigned long long)selectedTile().id);
+            showMessage(selectedTile().name+"\n\nTitle ID: "+id+"\n"+selectedTile().path);
+        } else showMessage("WiiUNX2 0.5.1 experimental\n\nD-pad / stick: select   A: open   B: back\nL / R: skip four titles\nTouch once to select, again to open");
+}
+
+void MainWindow::drawFooter(CVideo *v) {
+    // Pack from a shared right margin using actual font metrics, on a common baseline.
+    float right=1224;
+    for(int i=int(prompts.size())-1;i>=0;--i) {
+        auto &prompt=prompts[i];
+        float width=28+9+prompt.caption->getTextWidth();
+        prompt.left=right-width;prompt.right=right;
+        drawImage(*prompt.badge,v,prompt.left+14,674);
+        drawText(*prompt.caption,v,prompt.left+37,681);
+        right=prompt.left-28;
+    }
+}
+void MainWindow::footerAction(size_t action) {
+    if(action==0) {searchOpen=true;searchQuery.setText(query.empty()?"Type a title...":query.c_str());}
+    else if(action==1) {sortMode=(sortMode+1)%3;rebuildView();}
+    else if(action==2) showOptions();
+    else if(action==3) activate();
 }

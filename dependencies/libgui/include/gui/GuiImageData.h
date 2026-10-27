@@ -78,6 +78,9 @@ public:
     //! release memory of the image data
     void releaseData(void);
 
+    // Call once, on the renderer, before this image has been submitted to GX2.
+    bool roundCorners(float radiusFraction = 10.f/256.f);
+
 private:
     void gdImageToUnormR8G8B8A8(gdImagePtr gdImg, uint32_t *imgBuffer, uint32_t width, uint32_t height, uint32_t pitch);
 

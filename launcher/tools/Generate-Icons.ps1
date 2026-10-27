@@ -2,13 +2,18 @@
 Add-Type -AssemblyName System.Drawing
 $target = Join-Path $PSScriptRoot '../data/images'
 function Asset($name, $size, $draw) {
-    $bmp = [Drawing.Bitmap]::new($size,$size)
+    $bmp = [Drawing.Bitmap]::new(($size*3),($size*3))
     $g = [Drawing.Graphics]::FromImage($bmp)
     $g.SmoothingMode = [Drawing.Drawing2D.SmoothingMode]::AntiAlias
     $g.Clear([Drawing.Color]::Transparent)
+    $g.ScaleTransform(3,3)
     & $draw $g
-    $bmp.Save((Join-Path $target $name),[Drawing.Imaging.ImageFormat]::Png)
-    $g.Dispose(); $bmp.Dispose()
+    $small=[Drawing.Bitmap]::new($size,$size)
+    $down=[Drawing.Graphics]::FromImage($small)
+    $down.InterpolationMode=[Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $down.DrawImage($bmp,0,0,$size,$size)
+    $small.Save((Join-Path $target $name),[Drawing.Imaging.ImageFormat]::Png)
+    $down.Dispose();$small.Dispose();$g.Dispose();$bmp.Dispose()
 }
 function Pen($hex, $width=3) {
     $pen=[Drawing.Pen]::new([Drawing.ColorTranslator]::FromHtml($hex),$width)
@@ -131,5 +136,41 @@ Asset 'nxRing.png' 84 {
         $a=$stops[$segment];$b=$stops[$segment+1]
         $color=[Drawing.Color]::FromArgb(255,[int]($a[0]+($b[0]-$a[0])*$t),[int]($a[1]+($b[1]-$a[1])*$t),[int]($a[2]+($b[2]-$a[2])*$t))
         $p=[Drawing.Pen]::new($color,2.5);$g.DrawArc($p,4,4,76,76,$i,3);$p.Dispose()
+    }
+}
+
+# 0.5.1: actual rounded placeholder; the old corner-covering mask is no longer drawn.
+Asset 'nxTileBlank.png' 256 {
+    param($g)
+    $path=RoundedPath 0 0 256 256 10
+    $b=[Drawing.SolidBrush]::new([Drawing.Color]::FromArgb(247,247,247))
+    $g.FillPath($b,$path);$b.Dispose();$path.Dispose()
+}
+# Soft shadow with zero alpha around every outer edge (no rectangular cut-off).
+$shadow=[Drawing.Bitmap]::new(280,280)
+for($y=0;$y -lt 280;$y++) {for($x=0;$x -lt 280;$x++) {
+    $qx=[Math]::Abs($x+0.5-140)-118;$qy=[Math]::Abs($y+0.5-141)-118
+    $dx=[Math]::Max($qx,0);$dy=[Math]::Max($qy,0)
+    $d=[Math]::Sqrt($dx*$dx+$dy*$dy)+[Math]::Min([Math]::Max($qx,$qy),0)-10
+    $outside=[Math]::Max($d,0)
+    $alpha=if($outside -gt 8){0}else{[int][Math]::Round(14*[Math]::Exp(-$outside*$outside/(2*2.2*2.2)))}
+    $shadow.SetPixel($x,$y,[Drawing.Color]::FromArgb($alpha,0,0,0))
+}}
+$shadow.Save((Join-Path $target 'nxTileShadow.png'),[Drawing.Imaging.ImageFormat]::Png);$shadow.Dispose()
+foreach($button in @('Y','Minus','Plus','A')) {
+    Asset ("nxButton"+$button+".png") 28 {
+        param($g)
+        $b=[Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#333333'))
+        $g.FillEllipse($b,1,1,26,26);$b.Dispose()
+        if($button -eq 'Plus' -or $button -eq 'Minus') {
+            $p=Pen '#FFFFFF' 1.8;$g.DrawLine($p,9,14,19,14)
+            if($button -eq 'Plus') {$g.DrawLine($p,14,9,14,19)}
+            $p.Dispose()
+        } else {
+            $f=[Drawing.Font]::new('Arial',14,[Drawing.FontStyle]::Bold,[Drawing.GraphicsUnit]::Pixel)
+            $format=[Drawing.StringFormat]::new();$format.Alignment='Center';$format.LineAlignment='Center'
+            $g.DrawString($button,$f,[Drawing.Brushes]::White,[Drawing.PointF]::new(14,14.5),$format)
+            $format.Dispose();$f.Dispose()
+        }
     }
 }

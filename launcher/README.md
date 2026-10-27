@@ -1,6 +1,10 @@
-# WiiUNX2 0.5 — library, loading, visuals and audio
+# WiiUNX2 0.5.1 — card edges and footer alignment
 
-The user reports no more crashes with 0.4. Version 0.5 addresses startup responsiveness, adds search/sorting, refines the light HOME layout, and starts its own menu music. This build passes cross-compilation and host tests; its performance and audio still need real-hardware validation.
+Version 0.5.1 focuses on the reported square outline around rounded software cards and the bottom-right control alignment. The artwork now has real transparent, antialiased corners; the square backing and corner-covering overlay are removed. Loading placeholders are rounded too. Shadows fade to fully transparent before their texture edges.
+
+The footer uses separate controller badges and labels with a common baseline, measured text widths, and a fixed right margin. Its touch targets follow the actual prompt positions. The console's standard system font is used when available, with the bundled font as fallback. No console font files are included in the package.
+
+The executable compiles and rounding/layout regression checks pass. The new appearance still needs hardware validation. Search, sorting, background loading and audio from 0.5 are retained.
 
 ## Update
 
@@ -32,7 +36,7 @@ Metadata enumeration and reads now run on a joined CPU worker. The render thread
 
 The interface remains usable while titles populate. This does not eliminate storage latency or guarantee a fixed frame rate; a new icon still has to be decoded/uploaded on the rendering thread. Workers are joined before foreground resources are released.
 
-Visual changes include rounded software corners, soft card shadows, a pastel selection border/ring, a translucent dock surface, refined controller/settings/shop glyphs and separate touch targets for Search and Sort. The dock keeps working Wii U destinations rather than displaying Switch-only services. `layout-preview.png` is a generated layout preview with placeholder art, not a hardware screenshot.
+Visuals include rounded software corners, soft card shadows, a pastel selection border/ring, a translucent dock surface, refined controller/settings/shop glyphs and aligned controller prompts. The dock keeps working Wii U destinations rather than displaying Switch-only services. `layout-preview.png`, `layout-focus-preview.png` and `card-detail-preview.png` are illustrative previews with placeholder art and a desktop font, not hardware screenshots. The focused-card close-up shows the intended rounded outline.
 
 ## Menu music
 
@@ -42,7 +46,7 @@ The composition is reproducible with `node tools/Generate-Music.mjs`. Audio hand
 
 ## Diagnostics and validation
 
-The supplied `E:/wiiu/wiiunx2.log` could not be read during development because drive E: was unavailable. No SD files were modified. Code inspection identified render-thread metadata/file I/O and the disabled music player.
+No SD files were modified during this update. Design validation used generated previews and texture alpha/edge checks.
 
 Test a cold boot with a large library, search while loading, switch sort with a selected game, try an empty result, clear the filter, scroll, and return from Mii Maker. Check both TV and GamePad audio and confirm no menu music continues inside another title.
 
@@ -73,6 +77,6 @@ g++ -std=c++17 -O2 launcher/tests/library.cpp -o library-test
 ./library-test
 ```
 
-Tests cover navigation/touch boundaries, account pages, metadata fallback, Unicode, invalid icon data, search normalization, sort comparisons and keyboard boundaries. They cannot verify GX2/ACT/AX behavior, real-device performance or plugin compatibility.
+Tests cover navigation/touch boundaries, account pages, metadata fallback, Unicode, invalid icon data, search normalization, sort comparisons, keyboard boundaries, and rounded texture alpha/pitch/capacity safety. The additional rounding test is `launcher/tests/rounded.cpp`. They cannot verify GX2/ACT/AX behavior, real-device performance or plugin compatibility.
 
 Remaining features include folders, persistent ordering, play-history sorting, disc hotplug, quick-start integration and native Aroma homebrew discovery. The Men.pack/Men2.pack theme builder remains a separate fallback. See LICENSE and THIRD-PARTY.md.
