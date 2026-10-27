@@ -5,7 +5,7 @@
 
 class FSUtils {
 public:
-    static int32_t LoadFileToMem(const char *filepath, uint8_t **inbuffer, uint32_t *size);
+    static int32_t LoadFileToMem(const char *filepath, uint8_t **inbuffer, uint32_t *size, uint32_t maxSize = 16 * 1024 * 1024);
 
     //! todo: C++ class
     static int32_t CreateSubfolder(const char *fullpath);

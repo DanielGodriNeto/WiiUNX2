@@ -7,7 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 
-int32_t FSUtils::LoadFileToMem(const char *filepath, uint8_t **inbuffer, uint32_t *size) {
+int32_t FSUtils::LoadFileToMem(const char *filepath, uint8_t **inbuffer, uint32_t *size, uint32_t maxSize) {
     //! always initialze input
     *inbuffer = nullptr;
     if (size)
@@ -17,8 +17,12 @@ int32_t FSUtils::LoadFileToMem(const char *filepath, uint8_t **inbuffer, uint32_
     if (iFd < 0)
         return -1;
 
-    uint32_t filesize = lseek(iFd, 0, SEEK_END);
-    lseek(iFd, 0, SEEK_SET);
+    const auto length = lseek(iFd, 0, SEEK_END);
+    if (length <= 0 || static_cast<uint64_t>(length) > maxSize || lseek(iFd, 0, SEEK_SET) < 0) {
+        close(iFd);
+        return -4;
+    }
+    uint32_t filesize = static_cast<uint32_t>(length);
 
     uint8_t *buffer = (uint8_t *) malloc(filesize);
     if (buffer == nullptr) {

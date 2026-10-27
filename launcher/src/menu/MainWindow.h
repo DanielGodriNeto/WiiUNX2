@@ -2,8 +2,6 @@
 #pragma once
 #include "game/GameList.h"
 #include <gui/Gui.h>
-#include <future>
-#include <atomic>
 #include <memory>
 
 class MainWindow : public sigslot::has_slots<> {
@@ -16,6 +14,9 @@ public:
     void process();
     void updateEffects() {}
     void resume(FreeTypeGX *font);
+    struct ViewState { uint64_t titleId=0; int dock=0, row=0; };
+    ViewState saveView() const;
+    void restoreView(ViewState state) { restore=state; }
     void lockGUI() { guiMutex.lock(); }
     void unlockGUI() { guiMutex.unlock(); }
 private:
@@ -23,9 +24,22 @@ private:
         uint64_t id;
         MCPAppType type;
         std::string name, path;
-        GuiImageData *data;
+        std::unique_ptr<GuiImageData> data;
         std::unique_ptr<GuiImage> image;
+        bool attempted=false;
     };
+    struct Account {
+        uint8_t slot=0;
+        std::wstring name;
+        std::unique_ptr<GuiImageData> data;
+        std::unique_ptr<GuiImage> image;
+        std::unique_ptr<GuiText> caption;
+    };
+    void refreshAccounts();
+    void openAccounts();
+    void selectAccount();
+    void drawAccounts(CVideo *video);
+    void loadVisibleIcons();
     void titleChanged(gameInfo *info);
     void listChanged(GameList *list);
     void draw(CVideo *v);
@@ -36,12 +50,18 @@ private:
     void drawImage(GuiImage &image, CVideo *v, float x, float y);
     void drawText(GuiText &text, CVideo *v, float x, float y);
     GameList gameList;
-    std::future<void> loader;
-    std::atomic<bool> loaded{false};
+    bool loaded=false, listStarted=false, loadFailed=false;
+    ViewState restore;
     std::recursive_mutex guiMutex, tilesMutex;
     std::vector<Tile> tiles;
     GuiImage background, blank, focus, modalShade, modalPanel, batteryOutline, batteryInside, batteryFill, batteryTip;
-    GuiText title, clockText, footer, label, message;
+    GuiText title, clockText, footer, label, message, brand, hint, accountHeading, profileName, accountHelp;
+    std::string lastTitle, lastLabel;
+    GuiImage accountPanel, accountCard, accountFocus;
+    std::vector<Account> accounts;
+    bool actReady=false, accountsOpen=false;
+    int accountIndex=0;
+    uint8_t activeSlot=0;
     std::vector<GuiImageData *> assetData;
     std::vector<std::unique_ptr<GuiImage>> dock;
     std::unique_ptr<GuiImage> profile, ring, network;

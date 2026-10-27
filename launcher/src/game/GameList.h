@@ -62,6 +62,7 @@ public:
     }
 
     int32_t load();
+    bool loadNext();
 
     sigslot::signal1<GameList *> titleListChanged;
     sigslot::signal1<gameInfo *> titleUpdated;
@@ -76,9 +77,7 @@ public:
     }
 
 protected:
-    int32_t readGameList();
-
-    void updateTitleInfo();
+    size_t nextMetadata = 0;
 
     std::vector<gameInfo *> fullGameList;
 

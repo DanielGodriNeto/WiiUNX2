@@ -63,6 +63,8 @@ private:
     virtual ~Application();
 
     bool procUI(void);
+    void releaseGraphics();
+    MainWindow::ViewState savedView;
 
     static Application *applicationInstance;
     static bool exitApplication;

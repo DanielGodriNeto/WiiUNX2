@@ -256,7 +256,7 @@ void GuiImage::draw(CVideo *pVideo) {
         ColorShader::instance()->setScale(scaleFactor);
         ColorShader::instance()->setColorIntensity(colorIntensity);
         ColorShader::instance()->draw(primitive, vtxCount);
-    } else if (imageData) {
+    } else if (imageData && imageData->getTexture() && imageData->getSampler()) {
         Texture2DShader::instance()->setShaders();
         Texture2DShader::instance()->setAttributeBuffer(texCoords, posVtxs, vtxCount);
         Texture2DShader::instance()->setAngle(imageAngle);

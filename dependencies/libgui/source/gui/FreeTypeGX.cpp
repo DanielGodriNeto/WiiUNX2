@@ -1,3 +1,4 @@
+#include <gui/Utf8.h>
 /*
  * FreeTypeGX is a wrapper class for libFreeType which renders a compiled
  * FreeType parsable font so a GX texture for Wii homebrew development.
@@ -73,22 +74,11 @@ FreeTypeGX::~FreeTypeGX() {
  */
 
 wchar_t *FreeTypeGX::charToWideChar(const char *strChar) {
-    if (!strChar) { return NULL; }
-
-    size_t len        = strlen(strChar) + 1;
-    wchar_t *strWChar = new (std::nothrow) wchar_t[len];
-    if (!strWChar) { return NULL; }
-
-    size_t bt = mbstowcs(strWChar, strChar, len);
-    if (bt == (size_t) -1) {
-        return NULL;
-    }
-
-    if (bt < --len) {
-        strWChar[bt] = 0;
-    }
-
-    return strWChar;
+    if(!strChar) return nullptr;
+    auto decoded=gui::decodeUtf8(strChar);
+    auto *buffer=new (std::nothrow) wchar_t[decoded.size()+1];
+    if(buffer) std::copy(decoded.c_str(),decoded.c_str()+decoded.size()+1,buffer);
+    return buffer;
 }
 
 char *FreeTypeGX::wideCharToUTF8(const wchar_t *strChar) {
@@ -112,7 +102,7 @@ char *FreeTypeGX::wideCharToUTF8(const wchar_t *strChar) {
         }
     }
 
-    char *pOut = new (std::nothrow) char[len];
+    char *pOut = new (std::nothrow) char[len + 1];
     if (!pOut) {
         return NULL;
     }

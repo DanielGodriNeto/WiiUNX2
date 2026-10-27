@@ -43,14 +43,7 @@ Application::Application()
     controller[3] = new WPadController(GuiTrigger::CHANNEL_4);
     controller[4] = new WPadController(GuiTrigger::CHANNEL_5);
 
-    //! create bgMusic
-    bgMusic = new GuiSound(Resources::GetFile("bgMusic.ogg"), Resources::GetFileSize("bgMusic.ogg"));
-    bgMusic->SetLoop(true);
-    // The Switch-style HOME screen is silent.
-    bgMusic->SetVolume(50);
-
-    AsyncExecutor::execute([] { DEBUG_FUNCTION_LINE("Hello"); });
-
+    // This menu is silent; do not start the old audio/async worker infrastructure.
     exitApplication = false;
 
     ProcUIInit(OSSavesDone_ReadyToRelease);
@@ -142,25 +135,8 @@ bool Application::procUI() {
         }
         case PROCUI_STATUS_RELEASE_FOREGROUND: {
             DEBUG_FUNCTION_LINE("PROCUI_STATUS_RELEASE_FOREGROUND");
-            if (video != nullptr) {
-                // we can turn ofF the screen but we don't need to and it will display the last image
-                video->tvEnable(true);
-                video->drcEnable(true);
-
-                DEBUG_FUNCTION_LINE("delete fontSystem");
-                delete fontSystem;
-                fontSystem = nullptr;
-
-                DEBUG_FUNCTION_LINE("delete video");
-                delete video;
-                video = nullptr;
-
-                DEBUG_FUNCTION_LINE("deinitialze memory");
-                libgui_memoryRelease();
-                ProcUIDrawDoneRelease();
-            } else {
-                ProcUIDrawDoneRelease();
-            }
+            releaseGraphics();
+            ProcUIDrawDoneRelease();
             break;
         }
         case PROCUI_STATUS_IN_FOREGROUND: {
@@ -182,6 +158,7 @@ bool Application::procUI() {
                     if (mainWindow == nullptr) {
                         DEBUG_FUNCTION_LINE("Initialize main window");
                         mainWindow = new MainWindow(video->getTvWidth(), video->getTvHeight());
+                        mainWindow->restoreView(savedView);
                     }
                     mainWindow->resume(fontSystem);
                 }
@@ -206,6 +183,8 @@ void Application::executeThread() {
             continue;
         }
 
+        // CPU-side texture eviction must wait for both screens' previous GPU commands.
+        GX2DrawDone();
         mainWindow->lockGUI();
         mainWindow->process();
 
@@ -245,18 +224,17 @@ void Application::executeThread() {
         bgMusic->SetVolume(0);
     }
 
-    DEBUG_FUNCTION_LINE("delete mainWindow");
-    delete mainWindow;
-    mainWindow = nullptr;
+    releaseGraphics();
+}
 
-    DEBUG_FUNCTION_LINE("delete fontSystem");
-    delete fontSystem;
-    fontSystem = nullptr;
-
-    DEBUG_FUNCTION_LINE("delete video");
-    delete video;
-    video = nullptr;
-
-    DEBUG_FUNCTION_LINE("deinitialize memory");
+void Application::releaseGraphics() {
+    if (!video) return;
+    // Finish commands before freeing textures, glyphs, shader buffers or scanout memory.
+    GX2DrawDone();
+    if(mainWindow) savedView=mainWindow->saveView();
+    delete mainWindow; mainWindow=nullptr;
+    delete fontSystem; fontSystem=nullptr;
+    GuiText::setPresetFont(nullptr);
+    delete video; video=nullptr;
     libgui_memoryRelease();
 }

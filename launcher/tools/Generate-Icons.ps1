@@ -10,7 +10,13 @@ function Asset($name, $size, $draw) {
     $bmp.Save((Join-Path $target $name),[Drawing.Imaging.ImageFormat]::Png)
     $g.Dispose(); $bmp.Dispose()
 }
-function Pen($hex, $width=3) { [Drawing.Pen]::new([Drawing.ColorTranslator]::FromHtml($hex),$width) }
+function Pen($hex, $width=3) {
+    $pen=[Drawing.Pen]::new([Drawing.ColorTranslator]::FromHtml($hex),$width)
+    $pen.StartCap=[Drawing.Drawing2D.LineCap]::Round
+    $pen.EndCap=[Drawing.Drawing2D.LineCap]::Round
+    $pen.LineJoin=[Drawing.Drawing2D.LineJoin]::Round
+    return $pen
+}
 Asset 'nxFriends.png' 64 {
     param($g)
     $b=[Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#ED192D')); $g.FillEllipse($b,2,2,60,60)

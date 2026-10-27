@@ -126,7 +126,10 @@ lib:
 release:
 	@[ -d $@ ] || mkdir -p $@
 
-lib/libgui.a :$(SOURCES) $(INCLUDES) | lib release
+.PHONY: FORCE
+FORCE:
+
+lib/libgui.a : FORCE $(SOURCES) $(INCLUDES) | lib release
 	@$(MAKE) BUILD=release OUTPUT=$(CURDIR)/$@ \
 	BUILD_CFLAGS="-DNDEBUG=1 -O2 -s" \
 	DEPSDIR=$(CURDIR)/release \

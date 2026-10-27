@@ -1,10 +1,11 @@
+param([string]$Version='0.4')
 $ErrorActionPreference='Stop'
 $workspace=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-$package=Join-Path $workspace 'dist/WiiUNX2-menu-v0.3'
+$package=Join-Path $workspace "dist/WiiUNX2-menu-v$Version"
 if(Test-Path -LiteralPath $package) { throw 'Release directory already exists; preserve it before creating another release.' }
 New-Item -ItemType Directory -Path $package | Out-Null
 $launcher=Join-Path $workspace 'launcher'
-foreach($name in @('men.rpx','README.md','LICENSE','THIRD-PARTY.md','UPSTREAM-REVISIONS.txt','Install-SD.ps1','layout-preview.png')) {
+foreach($name in @('men.rpx','README.md','LICENSE','THIRD-PARTY.md','UPSTREAM-REVISIONS.txt','Install-SD.ps1','Update-SD.ps1','COMPATIBILITY.md','layout-preview.png')) {
     Copy-Item -LiteralPath (Join-Path $launcher $name) -Destination $package
 }
 $hash=(Get-FileHash -LiteralPath (Join-Path $package 'men.rpx') -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -20,7 +21,7 @@ foreach($name in @('src','data','tools','tests')) {
         Copy-Item -LiteralPath $_.FullName -Destination $out
     }
 }
-foreach($name in @('Makefile','filelist.sh','Build.ps1','README.md','LICENSE','THIRD-PARTY.md','UPSTREAM-README.md','UPSTREAM-REVISIONS.txt','Install-SD.ps1')) {
+foreach($name in @('Makefile','filelist.sh','Build.ps1','README.md','LICENSE','THIRD-PARTY.md','UPSTREAM-README.md','UPSTREAM-REVISIONS.txt','Install-SD.ps1','Update-SD.ps1','COMPATIBILITY.md')) {
     Copy-Item -LiteralPath (Join-Path $launcher $name) -Destination $source
 }
 $libout=Join-Path $package 'source/dependencies/libgui'
@@ -36,10 +37,12 @@ foreach($name in @('ppc-freetype','ppc-harfbuzz','ppc-libgd','ppc-libpng','ppc-l
     Copy-Item -LiteralPath "C:/devkitPro/portlibs/ppc/licenses/$name" -Destination $licenses -Recurse
 }
 @{
-    version='0.3-experimental'; binarySHA256=$hash
+    version="$Version-experimental"; binarySHA256=$hash
     binaryBytes=(Get-Item (Join-Path $package 'men.rpx')).Length
-    checks=@('devkitPPC/wut RPX cross-compilation passed','native C++ navigation/boundary tests passed','19 theme fallback tests passed')
+    checks=@('devkitPPC/wut RPX cross-compilation passed','native C++ navigation/boundary tests passed','metadata/Unicode/icon-validation/account paging host tests passed')
     consoleTested=$false; emulatorTested=$false
-    installEnvironment='aroma-wiiunx2'; pluginsIncluded=$false
+    installEnvironment='existing environment or optional aroma-wiiunx2'; pluginsIncluded=$false
+    previousHardwareResult='0.3 boot/render confirmed with normal Aroma plugins; intermittent crashes reported'
+    currentHardwareResult='0.4 needs hardware validation'
 } | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $package 'build-report.json')
 Write-Host "Staged $package"

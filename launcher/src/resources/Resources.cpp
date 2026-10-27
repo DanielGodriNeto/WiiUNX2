@@ -115,7 +115,7 @@ void Resources::RemoveImageData(GuiImageData *image) {
             itr->second.first--;
 
             if (itr->second.first == 0) {
-                AsyncExecutor::pushForDelete(itr->second.second);
+                delete itr->second.second;
 
                 instance->imageDataMap.erase(itr);
             }

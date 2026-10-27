@@ -1,218 +1,84 @@
-#include <algorithm>
-#include <coreinit/cache.h>
-#include <coreinit/mcp.h>
-#include <nn/acp/nn_acp_types.h>
-#include <nn/acp/title.h>
-#include <string.h>
-#include <string>
-
+// WiiUNX2 GPL-3.0-or-later; derived from launchiine GameList.
 #include "GameList.h"
-#include "common/common.h"
-#include "utils/AsyncExecutor.h"
-
+#include "Metadata.h"
 #include "fs/FSUtils.h"
 #include "utils/logger.h"
+#include <nn/acp/title.h>
+#include <malloc.h>
+#include <cstdio>
+#include <cstring>
+#include <memory>
 
-GameList::GameList() {
-}
-
-GameList::~GameList() {
-    stopAsyncLoading = true;
-    DCFlushRange(&stopAsyncLoading, sizeof(stopAsyncLoading));
-    clear();
-};
-
+GameList::GameList() {}
+GameList::~GameList() { clear(); }
 void GameList::clear() {
-    lock();
-    for (auto const &x : fullGameList) {
-        if (x != nullptr) {
-            if (x->imageData != nullptr) {
-                delete x->imageData;
-                x->imageData = nullptr;
-            }
-            delete x;
-        }
-    }
-    fullGameList.clear();
-    //! Clear memory of the vector completely
-    std::vector<gameInfo *>().swap(fullGameList);
-    unlock();
-    titleListChanged(this);
+    std::lock_guard<std::recursive_mutex> guard(_lock);
+    for(auto *info:fullGameList) { delete info->imageData; delete info; }
+    fullGameList.clear(); nextMetadata=0;
 }
-
-gameInfo *GameList::getGameInfo(uint64_t titleId) {
-    gameInfo *result = nullptr;
-    lock();
-    for (uint32_t i = 0; i < fullGameList.size(); ++i) {
-        if (titleId == fullGameList[i]->titleId) {
-            result = fullGameList[i];
-            break;
-        }
-    }
-    unlock();
-    return result;
+gameInfo *GameList::getGameInfo(uint64_t id) {
+    for(auto *info:fullGameList) if(info->titleId==id) return info;
+    return nullptr;
 }
-
-int32_t GameList::readGameList() {
-    // Clear list
-    for (auto const &x : fullGameList) {
-        delete x;
-    }
-
-    fullGameList.clear();
-    //! Clear memory of the vector completely
-    std::vector<gameInfo *>().swap(fullGameList);
-
-    int32_t cnt = 0;
-
-    MCPError mcp = MCP_Open();
-    if (mcp < 0) {
-        return 0;
-    }
-
-    MCPError titleCount = MCP_TitleCount(mcp);
-    if (titleCount < 0) {
-        MCP_Close(mcp);
-        return 0;
-    }
-
-    std::vector<struct MCPTitleListType> titles(titleCount);
-    uint32_t realTitleCount = 0;
-
-    static const std::vector<MCPAppType> menuAppTypes{
-            MCP_APP_TYPE_GAME,
-            MCP_APP_TYPE_GAME_WII,
-            MCP_APP_TYPE_SYSTEM_APPS,
-            MCP_APP_TYPE_SYSTEM_SETTINGS,
-            MCP_APP_TYPE_FRIEND_LIST,
-            MCP_APP_TYPE_MIIVERSE,
-            MCP_APP_TYPE_ESHOP,
-            MCP_APP_TYPE_BROWSER,
-            MCP_APP_TYPE_DOWNLOAD_MANAGEMENT,
-            MCP_APP_TYPE_ACCOUNT_APPS,
-    };
-
-    for (auto appType : menuAppTypes) {
-        uint32_t titleCountByType = 0;
-        MCPError err              = MCP_TitleListByAppType(mcp, appType, &titleCountByType, titles.data() + realTitleCount,
-                                                           (titles.size() - realTitleCount) * sizeof(decltype(titles)::value_type));
-        if (err < 0) {
-            MCP_Close(mcp);
-            return 0;
-        }
-        realTitleCount += titleCountByType;
-    }
-    MCP_Close(mcp);
-    if (realTitleCount != titles.size()) {
-        titles.resize(realTitleCount);
-    }
-
-    for (auto title_candidate : titles) {
-        auto *newGameInfo      = new gameInfo;
-        newGameInfo->titleId   = title_candidate.titleId;
-        newGameInfo->appType   = title_candidate.appType;
-        newGameInfo->gamePath  = title_candidate.path;
-        newGameInfo->name      = "<unknown>";
-        newGameInfo->imageData = nullptr;
-        DCFlushRange(newGameInfo, sizeof(gameInfo));
-
-        fullGameList.push_back(newGameInfo);
-        titleAdded(newGameInfo);
-        cnt++;
-    }
-
-    {
-        lock();
-        for (auto header : fullGameList) {
-            DCFlushRange(&stopAsyncLoading, sizeof(stopAsyncLoading));
-            if (stopAsyncLoading) {
-                DEBUG_FUNCTION_LINE("Stop async title loading");
-                break;
-            }
-
-            DEBUG_FUNCTION_LINE("Load extra infos of %016llX", header->titleId);
-            auto *meta = (ACPMetaXml *) calloc(1, sizeof(ACPMetaXml));
-            if (meta) {
-                auto acp = ACPGetTitleMetaXml(header->titleId, meta);
-                if (acp >= 0) {
-                    header->name = meta->shortname_en;
-                }
-                free(meta);
-            }
-
-            if (header->imageData == nullptr) {
-                std::string filepath = "fs:" + header->gamePath + META_PATH + "/iconTex.tga";
-                uint8_t *buffer      = nullptr;
-                uint32_t bufferSize  = 0;
-                int iResult          = FSUtils::LoadFileToMem(filepath.c_str(), &buffer, &bufferSize);
-                if (iResult > 0) {
-                    auto *imageData   = new GuiImageData(buffer, bufferSize, GX2_TEX_CLAMP_MODE_MIRROR);
-                    header->imageData = imageData;
-
-                    //! free original image buffer which is converted to texture now and not needed anymore
-                    free(buffer);
-                }
-            }
-            DCFlushRange(header, sizeof(gameInfo));
-            titleUpdated(header);
-        }
-        unlock();
-    }
-
-    return cnt;
-}
-
-void GameList::updateTitleInfo() {
-    for (int i = 0; i < this->size(); i++) {
-        gameInfo *newHeader = this->at(i);
-
-        bool hasChanged = false;
-
-        if (newHeader->name.empty()) {
-            auto *meta = (ACPMetaXml *) calloc(1, 0x4000); //TODO fix wut
-            if (meta) {
-                auto acp = ACPGetTitleMetaXml(newHeader->titleId, meta);
-                if (acp >= 0) {
-                    newHeader->name = meta->shortname_en;
-                    hasChanged      = true;
-                }
-                free(meta);
-            }
-        }
-
-        if (newHeader->imageData == nullptr) {
-            std::string filepath = "fs:" + newHeader->gamePath + META_PATH + "/iconTex.tga";
-            uint8_t *buffer      = nullptr;
-            uint32_t bufferSize  = 0;
-            int iResult          = FSUtils::LoadFileToMem(filepath.c_str(), &buffer, &bufferSize);
-
-            if (iResult > 0) {
-                auto *imageData      = new GuiImageData(buffer, bufferSize, GX2_TEX_CLAMP_MODE_MIRROR);
-                newHeader->imageData = imageData;
-                hasChanged           = true;
-
-                //! free original image buffer which is converted to texture now and not needed anymore
-                free(buffer);
-            }
-        }
-        if (hasChanged) {
-            DCFlushRange(newHeader, sizeof(gameInfo));
-            titleUpdated(newHeader);
-        }
-    }
-}
-
 int32_t GameList::load() {
-    lock();
-    if (fullGameList.empty()) {
-        readGameList();
+    if(!fullGameList.empty()) return fullGameList.size();
+    int handle=MCP_Open();
+    if(handle<0) { DEBUG_FUNCTION_LINE("MCP_Open failed: %d",handle); return -1; }
+    int count=MCP_TitleCount(handle);
+    if(count<0 || count>8192) {MCP_Close(handle);return -1;}
+    // Per-type lists use a full-size buffer, with returned counts checked before access.
+    // This API does not take Homebrew on Menu's synthetic titles from MCP_TitleList.
+    std::vector<MCPTitleListType> list(std::max(count,1));
+    const MCPAppType types[]={MCP_APP_TYPE_GAME,MCP_APP_TYPE_GAME_WII,MCP_APP_TYPE_SYSTEM_APPS,
+        MCP_APP_TYPE_SYSTEM_SETTINGS,MCP_APP_TYPE_FRIEND_LIST,MCP_APP_TYPE_MIIVERSE,
+        MCP_APP_TYPE_ESHOP,MCP_APP_TYPE_BROWSER,MCP_APP_TYPE_DOWNLOAD_MANAGEMENT,MCP_APP_TYPE_ACCOUNT_APPS};
+    for(auto type:types) {
+        uint32_t actual=0;
+        auto result=MCP_TitleListByAppType(handle,type,&actual,list.data(),list.size()*sizeof(MCPTitleListType));
+        if(result<0 || actual>list.size()) {DEBUG_FUNCTION_LINE("MCP list failed type %u: %d",unsigned(type),int(result));continue;}
+        for(uint32_t i=0;i<actual;++i) {
+            const auto &item=list[i];
+            if(getGameInfo(item.titleId)) continue;
+            auto *info=new gameInfo{};
+            info->titleId=item.titleId;info->appType=item.appType;
+            info->gamePath=nx::bounded(item.path,sizeof(item.path));
+            char fallback[48];std::snprintf(fallback,sizeof(fallback),"Software %016llX",(unsigned long long)item.titleId);
+            info->name=fallback;
+            fullGameList.push_back(info); titleAdded(info);
+        }
     }
-
-    // Metadata has already been loaded synchronously by the owned loader task.
-
+    MCP_Close(handle);
+    DEBUG_FUNCTION_LINE("Enumerated %u installed titles",unsigned(fullGameList.size()));
     titleListChanged(this);
-
-    int res = fullGameList.size();
-    unlock();
-    return res;
+    return fullGameList.size();
+}
+// Called once per rendered frame, on the GX2 owner thread. No background texture creation.
+bool GameList::loadNext() {
+    if(nextMetadata>=fullGameList.size()) return true;
+    auto *info=fullGameList[nextMetadata++];
+    std::string name;
+    // ACPGetTitleMetaXml rejects buffers not aligned to 64 bytes.
+    // Keep the upstream 0x4000-byte capacity as well as current wut's declared struct size.
+    static_assert(sizeof(ACPMetaXml)<=0x4000,"ACP metadata buffer too small");
+    std::unique_ptr<void,decltype(&free)> storage(memalign(0x40,0x4000),&free);
+    if(storage) {
+        std::memset(storage.get(),0,0x4000);
+        auto *meta=static_cast<ACPMetaXml *>(storage.get());
+        auto result=ACPGetTitleMetaXml(info->titleId,meta);
+        if(result==ACP_RESULT_SUCCESS) {
+            const char *shortNames[]={meta->shortname_en,meta->shortname_pt,meta->shortname_es,meta->shortname_fr,meta->shortname_de,meta->shortname_it,meta->shortname_nl,meta->shortname_ja,meta->shortname_ko,meta->shortname_zhs,meta->shortname_zht,meta->shortname_ru};
+            const char *longNames[]={meta->longname_en,meta->longname_pt,meta->longname_es,meta->longname_fr,meta->longname_de,meta->longname_it,meta->longname_nl,meta->longname_ja,meta->longname_ko,meta->longname_zhs,meta->longname_zht,meta->longname_ru};
+            for(auto text:shortNames) { name=nx::trim(nx::bounded(text,256));if(!name.empty()) break; }
+            if(name.empty()) for(auto text:longNames) {name=nx::trim(nx::bounded(text,512));if(!name.empty()) break;}
+        } else DEBUG_FUNCTION_LINE("Metadata failed %016llX: %d",(unsigned long long)info->titleId,int(result));
+    }
+    if(name.empty() && !info->gamePath.empty()) {
+        uint8_t *bytes=nullptr; uint32_t size=0;
+        if(FSUtils::LoadFileToMem(("fs:"+info->gamePath+"/meta/meta.xml").c_str(),&bytes,&size,1024*1024)>0) {
+            name=nx::xmlTitle(std::string(reinterpret_cast<char *>(bytes),size)); free(bytes);
+        }
+    }
+    if(!name.empty()) info->name=name;
+    titleUpdated(info);
+    return nextMetadata>=fullGameList.size();
 }

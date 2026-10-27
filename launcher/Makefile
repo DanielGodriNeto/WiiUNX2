@@ -126,7 +126,7 @@ DEPENDS	:=	$(OFILES:.o=.d)
 all	:	$(OUTPUT).rpx
 
 $(OUTPUT).rpx	:	$(OUTPUT).elf
-$(OUTPUT).elf	:	$(OFILES)
+$(OUTPUT).elf	:	$(OFILES) $(TOPDIR)/../dependencies/libgui/lib/libgui.a
 
 $(OFILES_SRC)	: $(HFILES_BIN)
 

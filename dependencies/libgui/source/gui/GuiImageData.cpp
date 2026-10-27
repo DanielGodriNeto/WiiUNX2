@@ -121,7 +121,7 @@ void GuiImageData::loadImage(const uint8_t *img, int32_t imgSize, GX2TexClampMod
         gdImg = gdImageCreateFromPngPtr(imgSize, (uint8_t *) img);
     }
     //!This must be last since it can also intefere with outher formats
-    else if (img[0] == 0x00) {
+    else if (imgSize >= 18 && img[1] == 0 && (img[2] == 2 || img[2] == 10) && (img[16] == 24 || img[16] == 32)) {
         // Try loading TGA image
         gdImg = gdImageCreateFromTgaPtr(imgSize, (uint8_t *) img);
     }
@@ -132,6 +132,10 @@ void GuiImageData::loadImage(const uint8_t *img, int32_t imgSize, GX2TexClampMod
 
     uint32_t width  = (gdImageSX(gdImg));
     uint32_t height = (gdImageSY(gdImg));
+    if (!width || !height || width > 2048 || height > 2048) {
+        gdImageDestroy(gdImg);
+        return;
+    }
 
     //! Initialize texture
     texture = new GX2Texture;
@@ -148,16 +152,8 @@ void GuiImageData::loadImage(const uint8_t *img, int32_t imgSize, GX2TexClampMod
     //! allocate memory for the surface
     memoryType             = eMemTypeMEM2;
     texture->surface.image = memalign(texture->surface.alignment, texture->surface.imageSize);
-    //! try MEM1 on failure
-    if (!texture->surface.image) {
-        memoryType             = eMemTypeMEM1;
-        texture->surface.image = MEM1_alloc(texture->surface.imageSize, texture->surface.alignment);
-    }
-    //! try MEM bucket on failure
-    if (!texture->surface.image) {
-        memoryType             = eMemTypeMEMBucket;
-        texture->surface.image = MEMBucket_alloc(texture->surface.imageSize, texture->surface.alignment);
-    }
+    // Retained UI textures must not fall back to foreground-only heaps.
+    // Return an empty image on MEM2 exhaustion; callers show a placeholder.
     //! check if memory is available for image
     if (!texture->surface.image) {
         gdImageDestroy(gdImg);
