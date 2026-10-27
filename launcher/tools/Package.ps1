@@ -1,11 +1,11 @@
-param([string]$Version='0.5.1')
+param([string]$Version='0.5.2')
 $ErrorActionPreference='Stop'
 $workspace=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $package=Join-Path $workspace "dist/WiiUNX2-menu-v$Version"
 if(Test-Path -LiteralPath $package) { throw 'Release directory already exists; preserve it before creating another release.' }
 New-Item -ItemType Directory -Path $package | Out-Null
 $launcher=Join-Path $workspace 'launcher'
-foreach($name in @('men.rpx','README.md','LICENSE','THIRD-PARTY.md','UPSTREAM-REVISIONS.txt','Install-SD.ps1','Update-SD.ps1','COMPATIBILITY.md','layout-preview.png','layout-focus-preview.png','card-detail-preview.png')) {
+foreach($name in @('men.rpx','README.md','LICENSE','THIRD-PARTY.md','UPSTREAM-REVISIONS.txt','Install-SD.ps1','Update-SD.ps1','COMPATIBILITY.md','layout-preview.png','layout-focus-preview.png','card-detail-preview.png','profile-hover-preview.png','accounts-preview.png','search-preview.png')) {
     Copy-Item -LiteralPath (Join-Path $launcher $name) -Destination $package
 }
 $hash=(Get-FileHash -LiteralPath (Join-Path $package 'men.rpx') -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -39,10 +39,10 @@ foreach($name in @('ppc-freetype','ppc-harfbuzz','ppc-libgd','ppc-libpng','ppc-l
 @{
     version="$Version-experimental"; binarySHA256=$hash
     binaryBytes=(Get-Item (Join-Path $package 'men.rpx')).Length
-    checks=@('devkitPPC/wut RPX cross-compilation passed','native C++ navigation/boundary tests passed','metadata/Unicode/icon-validation/account paging host tests passed','search/sort/accent/keyboard boundary host tests passed','rounded texture alpha/pitch/capacity checks passed','PNG corner/shadow-edge checks passed','full layout and focused-card previews visually inspected')
+    checks=@('devkitPPC/wut RPX cross-compilation passed','native C++ navigation/boundary tests passed','metadata/Unicode/icon-validation/account paging host tests passed','search/sort/accent/keyboard boundary host tests passed','rounded texture alpha/pitch/capacity checks passed','rounded panel/keyboard alpha corners and account-gradient pixels verified','HOME/profile/accounts/search previews visually inspected')
     consoleTested=$false; emulatorTested=$false
     installEnvironment='existing environment or optional aroma-wiiunx2'; pluginsIncluded=$false
     previousHardwareResult='User reports no more crashes with version 0.4'
-    currentHardwareResult='0.5.1 visual update needs hardware validation'
+    currentHardwareResult='0.5.2 visual update needs hardware validation'
 } | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $package 'build-report.json')
 Write-Host "Staged $package"

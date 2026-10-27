@@ -76,12 +76,10 @@ private:
     ViewState restore;
     std::recursive_mutex guiMutex, tilesMutex;
     std::vector<Tile> tiles;
-    GuiImage background, modalShade, modalPanel, batteryOutline, batteryInside, batteryFill, batteryTip;
+    GuiImage background, modalShade, batteryOutline, batteryInside, batteryFill, batteryTip;
     GuiText title, clockText, label, message, brand, hint, accountHeading, profileName, accountHelp;
     std::string lastTitle, lastLabel;
-    GuiImage accountPanel, accountCard, accountFocus;
     GuiText libraryStatus, searchHeading, searchQuery, searchHelp;
-    GuiImage searchPanel, keyCard, keyFocus;
     std::vector<Account> accounts;
     bool actReady=false, accountsOpen=false;
     int accountIndex=0;
@@ -89,6 +87,7 @@ private:
     std::vector<GuiImageData *> assetData;
     std::vector<std::unique_ptr<GuiImage>> dock;
     std::unique_ptr<GuiImage> profile, ring, network, tileBlank, tileFocus, tileShadow, dockSurface;
+    std::unique_ptr<GuiImage> modalPanel, accountPanel, accountCard, accountFocus, searchPanel, keyCard, keyFocus;
     struct FooterPrompt {
         std::unique_ptr<GuiImage> badge;
         std::unique_ptr<GuiText> caption;

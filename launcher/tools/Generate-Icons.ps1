@@ -174,3 +174,5 @@ foreach($button in @('Y','Minus','Plus','A')) {
         }
     }
 }
+
+. (Join-Path $PSScriptRoot 'Generate-Design.ps1')

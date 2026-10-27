@@ -27,7 +27,6 @@ static bool isMenu(uint64_t id) { return (id >> 32) == 0x00050010 && ((id & 0xff
 
 MainWindow::MainWindow(int32_t w, int32_t h)
  : background(w,h,GX2Color{233,233,233,255}), modalShade(w,h,GX2Color{0,0,0,130}),
-   modalPanel(960,340,GX2Color{250,250,250,255}),
    batteryOutline(32,18,GX2Color{70,70,70,255}), batteryInside(28,14,GX2Color{233,233,233,255}),
    batteryFill(24,10,GX2Color{67,160,44,255}), batteryTip(3,8,GX2Color{70,70,70,255}),
    title("Loading software...",26,glm::vec4(.12f,.12f,.12f,1)),
@@ -39,16 +38,15 @@ MainWindow::MainWindow(int32_t w, int32_t h)
    accountHeading("Select a user",30,glm::vec4(.12f,.12f,.12f,1)),
    profileName("",22,glm::vec4(.12f,.12f,.12f,1)),
    accountHelp("L / R  More users       B  Back       A  Select",22,glm::vec4(.12f,.36f,.62f,1)),
-   accountPanel(1120,420,GX2Color{250,250,250,255}),
-   accountCard(148,164,GX2Color{239,239,239,255}),
-   accountFocus(156,172,GX2Color{35,197,218,255}),libraryStatus("",18,glm::vec4(.4f,.4f,.4f,1)),
+   libraryStatus("",18,glm::vec4(.4f,.4f,.4f,1)),
    searchHeading("Find software",30,glm::vec4(.12f,.12f,.12f,1)),
    searchQuery("",27,glm::vec4(.12f,.36f,.62f,1)),
    searchHelp("D-pad: choose key   A: type   X: erase   +: done   B: close",20,glm::vec4(.3f,.3f,.3f,1)),
-   searchPanel(1120,520,GX2Color{250,250,250,255}),
-   keyCard(84,54,GX2Color{235,235,235,255}),keyFocus(90,60,GX2Color{35,197,218,255}),width(w),height(h) {
+   width(w),height(h) {
     title.setMaxWidth(1070,GuiText::DOTTED);
     message.setMaxWidth(840,GuiText::WRAP);
+    profileName.setAlignment(ALIGN_LEFT | ALIGN_MIDDLE);
+    profileName.setMaxWidth(420,GuiText::DOTTED);
     auto asset = [this](const char *name) {
         auto *data=Resources::GetImageData(name);
         assetData.push_back(data);
@@ -58,6 +56,9 @@ MainWindow::MainWindow(int32_t w, int32_t h)
     profile=asset("nxProfile.png"); ring=asset("nxRing.png");
     network=asset("nxNetwork.png");
     tileBlank=asset("nxTileBlank.png");tileFocus=asset("nxTileFocus.png");tileShadow=asset("nxTileShadow.png");dockSurface=asset("nxDock.png");
+    modalPanel=asset("nxModalPanel.png");accountPanel=asset("nxAccountPanel.png");
+    accountCard=asset("nxAccountCard.png");accountFocus=asset("nxAccountFocus.png");
+    searchPanel=asset("nxSearchPanel.png");keyCard=asset("nxKeyCard.png");keyFocus=asset("nxKeyFocus.png");
     const char *badges[]={"nxButtonY.png","nxButtonMinus.png","nxButtonPlus.png","nxButtonA.png"};
     const char *captions[]={"Search","Sort","Options","OK"};
     for(int i=0;i<4;++i) {
@@ -85,6 +86,7 @@ MainWindow::~MainWindow() {
     gameList.titleUpdated.disconnect(this);
     gameList.titleListChanged.disconnect(this);
     tiles.clear(); dock.clear();prompts.clear(); profile.reset(); ring.reset(); network.reset();tileBlank.reset();tileFocus.reset();tileShadow.reset();dockSurface.reset();
+    modalPanel.reset();accountPanel.reset();accountCard.reset();accountFocus.reset();searchPanel.reset();keyCard.reset();keyFocus.reset();
     for(auto *data:assetData) Resources::RemoveImageData(data);
     if(acReady) ACFinalize();
 }
@@ -172,7 +174,7 @@ void MainWindow::draw(CVideo *v) {
         current->image->setScaleX(52.f/current->data->getWidth());current->image->setScaleY(52.f/current->data->getHeight());
         drawImage(*current->image,v,80,75);
     } else drawImage(*profile,v,80,75);
-    if(focusRow==2) drawText(profileName,v,270,76);
+    if(focusRow==2) drawText(profileName,v,128,75);
     drawText(clockText,v,1070,76);
     network->setAlpha(connected ? 1.f : .22f);
     drawImage(*network,v,1160,76);
@@ -206,7 +208,7 @@ void MainWindow::draw(CVideo *v) {
     if(accountsOpen) drawAccounts(v);
     if(searchOpen) drawSearch(v);
     if(modal) {
-        drawImage(modalShade,v,640,360); drawImage(modalPanel,v,640,360);
+        drawImage(modalShade,v,640,360); drawImage(*modalPanel,v,640,360);
         drawText(message,v,640,335);
         drawText(hint,v,640,480);
     }
@@ -398,6 +400,7 @@ void MainWindow::refreshAccounts() {
         if(buffer && nn::act::GetMiiImageEx(&actual,buffer.get(),capacity,0,slot).IsSuccess() && actual>0 && actual<=capacity) {
             auto data=std::make_unique<GuiImageData>(static_cast<uint8_t *>(buffer.get()),actual);
             if(data->getTexture() && data->getSampler()) {
+                data->roundCorners(.5f);
                 account.data=std::move(data);account.image=std::make_unique<GuiImage>(account.data.get());
             }
         }
@@ -429,17 +432,17 @@ void MainWindow::selectAccount() {
     DEBUG_FUNCTION_LINE("Active account slot changed to %u",unsigned(activeSlot));
 }
 void MainWindow::drawAccounts(CVideo *v) {
-    drawImage(modalShade,v,640,360);drawImage(accountPanel,v,640,360);
+    drawImage(modalShade,v,640,360);drawImage(*accountPanel,v,640,360);
     drawText(accountHeading,v,640,220);
     const int first=(accountIndex/6)*6;
     for(int i=first;i<std::min(first+6,int(accounts.size()));++i) {
         auto &account=accounts[i];float x=230+(i-first)*164;
-        if(i==accountIndex) drawImage(accountFocus,v,x,360);
-        drawImage(accountCard,v,x,360);
+        if(i==accountIndex) drawImage(*accountFocus,v,x,360);
+        drawImage(*accountCard,v,x,360);
         if(account.image) {
             account.image->setScaleX(88.f/account.data->getWidth());account.image->setScaleY(88.f/account.data->getHeight());
             drawImage(*account.image,v,x,333);
-        } else drawImage(*profile,v,x,333);
+        } else {profile->setScale(88.f/64);drawImage(*profile,v,x,333);profile->setScale(1); }
         drawText(*account.caption,v,x,411);
     }
     // These strings have stable storage across both screen draws.
@@ -467,12 +470,12 @@ void MainWindow::searchKey(int key) {
     searchQuery.setText(query.empty()?"Type a title...":query.c_str());rebuildView();
 }
 void MainWindow::drawSearch(CVideo *v) {
-    drawImage(modalShade,v,640,360);drawImage(searchPanel,v,640,360);
+    drawImage(modalShade,v,640,360);drawImage(*searchPanel,v,640,360);
     drawText(searchHeading,v,640,160);drawText(searchQuery,v,640,238);
     for(int i=0;i<40;++i) {
         float x=222+(i%10)*92,y=327+(i/10)*64;
-        if(i==keyboardIndex) drawImage(keyFocus,v,x,y);
-        drawImage(keyCard,v,x,y);drawText(*keyLabels[i],v,x,y);
+        if(i==keyboardIndex) drawImage(*keyFocus,v,x,y);
+        drawImage(*keyCard,v,x,y);drawText(*keyLabels[i],v,x,y);
     }
     drawText(searchHelp,v,640,580);
 }
@@ -481,7 +484,7 @@ void MainWindow::showOptions() {
         if(focusRow==0 && !visible.empty()) {
             char id[32]; snprintf(id,sizeof(id),"%016llX",(unsigned long long)selectedTile().id);
             showMessage(selectedTile().name+"\n\nTitle ID: "+id+"\n"+selectedTile().path);
-        } else showMessage("WiiUNX2 0.5.1 experimental\n\nD-pad / stick: select   A: open   B: back\nL / R: skip four titles\nTouch once to select, again to open");
+        } else showMessage("WiiUNX2 0.5.2 experimental\n\nD-pad / stick: select   A: open   B: back\nL / R: skip four titles\nTouch once to select, again to open");
 }
 
 void MainWindow::drawFooter(CVideo *v) {

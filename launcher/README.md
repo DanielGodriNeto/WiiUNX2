@@ -1,10 +1,12 @@
-# WiiUNX2 0.5.1 — card edges and footer alignment
+# WiiUNX2 0.5.2 — rounded menus, profiles and refined icons
 
-Version 0.5.1 focuses on the reported square outline around rounded software cards and the bottom-right control alignment. The artwork now has real transparent, antialiased corners; the square backing and corner-covering overlay are removed. Loading placeholders are rounded too. Shadows fade to fully transparent before their texture edges.
+This visual update rounds the user-picker panel/cards, options/power dialogs, search panel and keyboard keys. The selected user and search key use a cyan-to-pink gradient outline consistent with HOME. The picker panel also has a subtle cool-to-warm tint. Mii pictures are clipped to circular avatars.
 
-The footer uses separate controller badges and labels with a common baseline, measured text widths, and a fixed right margin. Its touch targets follow the actual prompt positions. The console's standard system font is used when available, with the bundled font as fallback. No console font files are included in the package.
+The focused HOME profile name is left-aligned at x=128, just beside the avatar, with a bounded width for long names. It no longer sits at a distant fixed center point.
 
-The executable compiles and rounding/layout regression checks pass. The new appearance still needs hardware validation. Search, sorting, background loading and audio from 0.5 are retained.
+The dock uses newly drawn, consistently weighted glyphs for Friend List, Browser, Download Management, eShop, Mii Maker, Data Management, Controllers, Settings and Power. Their shapes retain their Wii U destinations while taking visual cues from the reference. Both the browser globe and the Wi-Fi status icon are refined; Wi-Fi uses symmetric arcs sharing a center.
+
+The executable compiles, menu/keyboard/rounding tests pass, and generated panel corners/gradient pixels have been checked. These visuals still need confirmation on hardware. Search, sorting, background loading and music are retained.
 
 ## Update
 
@@ -36,7 +38,7 @@ Metadata enumeration and reads now run on a joined CPU worker. The render thread
 
 The interface remains usable while titles populate. This does not eliminate storage latency or guarantee a fixed frame rate; a new icon still has to be decoded/uploaded on the rendering thread. Workers are joined before foreground resources are released.
 
-Visuals include rounded software corners, soft card shadows, a pastel selection border/ring, a translucent dock surface, refined controller/settings/shop glyphs and aligned controller prompts. The dock keeps working Wii U destinations rather than displaying Switch-only services. `layout-preview.png`, `layout-focus-preview.png` and `card-detail-preview.png` are illustrative previews with placeholder art and a desktop font, not hardware screenshots. The focused-card close-up shows the intended rounded outline.
+Visuals include rounded software corners, soft card shadows, a pastel selection border/ring, a translucent dock surface, refined controller/settings/shop glyphs and aligned controller prompts. The dock keeps working Wii U destinations rather than displaying Switch-only services. `layout-preview.png`, `layout-focus-preview.png`, `card-detail-preview.png`, `profile-hover-preview.png`, `accounts-preview.png` and `search-preview.png` are illustrative previews with placeholder art and a desktop font, not hardware screenshots. The focused-card close-up shows the intended rounded outline.
 
 ## Menu music
 
@@ -64,7 +66,7 @@ cd ../../launcher
 make -j4
 ```
 
-On Windows, run `source/launcher/Build.ps1`. Output is `source/launcher/men.rpx`. The included generated icons/music are ready to build. To regenerate, run `tools/Generate-Icons.ps1` and `node tools/Generate-Music.mjs` from the launcher source. Run `tools/Preview-Layout.ps1` for the illustrative preview.
+On Windows, run `source/launcher/Build.ps1`. Output is `source/launcher/men.rpx`. The included generated icons/music are ready to build. To regenerate, run `tools/Generate-Icons.ps1` and `node tools/Generate-Music.mjs` from the launcher source. Run `tools/Preview-Menus.ps1` for the HOME, profile, accounts and search previews. `Generate-Icons.ps1` invokes the shared `Generate-Design.ps1` definitions automatically.
 
 From the source root, use a native C++ compiler:
 
