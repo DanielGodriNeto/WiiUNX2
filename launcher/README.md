@@ -1,8 +1,10 @@
-# WiiUNX2 0.6 — TVii, interface sounds and consistent controls
+# WiiUNX2 0.6.1 — software-row TVii and simplified icons
 
-This build adds Nintendo TVii to the software row when an installed regional TVii title is found. The ten-icon dock also has a TVii shortcut. TVii launches through the system applet-switch call used by Aroma's AutobootModule, rather than as a normal game. Project Rose remains responsible for its service patches; this launcher does not install TVii or modify your plugin settings. TVii launching/returning with RosePatcher needs hardware validation.
+This build keeps Nintendo TVii in the software row when an installed regional TVii title is found. TVii appears only as a normal selectable software tile; it has no dock shortcut. TVii launches through the system applet-switch call used by Aroma's AutobootModule, rather than as a normal game. Project Rose remains responsible for its service patches; this launcher does not install TVii or modify your plugin settings. TVii launching/returning with RosePatcher needs hardware validation.
 
-Options, search, account selection and power confirmation now share HOME's controller badges, font baseline, measured spacing and touch support. The dock has compact outline glyphs, a centered ten-slot capsule and captions beneath the focused icon, based on the supplied screenshots. Wii U destination symbols remain distinct from Switch-only services.
+The Friends badge has no embedded text and uses separated silhouettes without intersecting shoulder lines. The controller glyph uses a slim Wii Remote silhouette with a D-pad, A and two small lower buttons, retaining the compact outline style.
+
+Options, search, account selection and power confirmation now share HOME's controller badges, font baseline, measured spacing and touch support. The dock has compact outline glyphs, a centered nine-slot capsule and captions beneath the focused icon, based on the supplied screenshots. Wii U destination symbols remain distinct from Switch-only services.
 
 User-supplied Switch WAV effects are embedded for navigation, clicking and backing out. They are converted to 32 kHz mono PCM and preloaded into aligned buffers. One separate AX voice plays effects alongside the ambient music, without file reads or a decoder thread during interaction. A navigation sound is emitted only when input changes selection. The effects and music are stopped/freed on foreground release and recreated on return. Hardware still needs to confirm loudness, plugin interaction and applet transitions.
 
@@ -70,7 +72,7 @@ The generated files are already present, so rebuilding the shipped source does n
 
 No SD files were modified during this update. Design validation used generated previews and texture alpha/edge checks.
 
-Test repeated navigation/touch activation, the dialog prompt buttons, TVii from both the row and dock, and returning from TVii/Mii Maker. Check sounds after each return and verify they stop when another app opens. Check both TV and GamePad audio and confirm no menu music continues inside another title.
+Test repeated navigation/touch activation, the dialog prompt buttons, TVii from the software row, and returning from TVii/Mii Maker. Check sounds after each return and verify they stop when another app opens. Check both TV and GamePad audio and confirm no menu music continues inside another title.
 
 `SD:/wiiu/wiiunx2.log` is capped at 1 MiB. It now includes metadata scan duration and the time taken for each 600 menu frames. Rename an old full log before testing if you want new diagnostics. It does not log search text, account names or passwords.
 
@@ -99,6 +101,7 @@ g++ -std=c++17 -O2 launcher/tests/library.cpp -o library-test
 ./library-test
 ```
 
-Run the sound importer tests with `node --test launcher/tests/sounds.mjs`. Tests cover ten-slot dock/TVii ID boundaries, navigation/touch boundaries, account pages, metadata fallback, Unicode, invalid icon data, search normalization, sort comparisons, keyboard boundaries, and rounded texture alpha/pitch/capacity safety. The additional rounding test is `launcher/tests/rounded.cpp`. They cannot verify GX2/ACT/AX behavior, real-device performance or plugin compatibility.
+Run the sound importer tests with `node --test launcher/tests/sounds.mjs`. Tests cover nine-slot dock/TVii ID boundaries, navigation/touch boundaries, account pages, metadata fallback, Unicode, invalid icon data, search normalization, sort comparisons, keyboard boundaries, and rounded texture alpha/pitch/capacity safety. The additional rounding test is `launcher/tests/rounded.cpp`. They cannot verify GX2/ACT/AX behavior, real-device performance or plugin compatibility.
 
 Remaining features include folders, persistent ordering, play-history sorting, disc hotplug, quick-start integration and native Aroma homebrew discovery. The Men.pack/Men2.pack theme builder remains a separate fallback. See LICENSE and THIRD-PARTY.md.
+

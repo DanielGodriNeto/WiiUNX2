@@ -21,7 +21,7 @@ inline int hitTile(float x,float y,float scroll,int count) {
     int index=int(std::floor(local/tileStep));
     return index<count && local-index*tileStep<=tileSize ? index : -1;
 }
-constexpr int dockCount=10,dockFirst=280,dockStep=80,dockLeft=240;
+constexpr int dockCount=9,dockFirst=320,dockStep=80,dockLeft=280;
 inline int hitDock(float x,float y) {
     if(y<520 || y>600 || x<dockLeft || x>=dockLeft+dockCount*dockStep) return -1;
     return int((x-dockLeft)/dockStep);

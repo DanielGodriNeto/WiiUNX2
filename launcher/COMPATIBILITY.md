@@ -25,3 +25,5 @@ The user reports no more crashes with 0.4. Version 0.5 adds CPU-only loading wor
 ## Version 0.6
 
 TVii now has installed-title discovery for all three regional IDs and uses SYSAPP_PFID_TVII for launching. RosePatcher remains responsible for its network/service patches; the launcher does not install or configure it. The TVii route and returning to this menu require hardware validation. UI effects use a second AX voice; audio handoff with plugins also needs validation.
+
+Version 0.6.1 keeps TVii only in the software row, removes its dock shortcut, and retains the system launch operation required for TVii.

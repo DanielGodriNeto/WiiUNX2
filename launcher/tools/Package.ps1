@@ -1,4 +1,4 @@
-param([string]$Version='0.6')
+param([string]$Version='0.6.1')
 $ErrorActionPreference='Stop'
 $workspace=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $package=Join-Path $workspace "dist/WiiUNX2-menu-v$Version"
@@ -39,10 +39,10 @@ foreach($name in @('ppc-freetype','ppc-harfbuzz','ppc-libgd','ppc-libpng','ppc-l
 @{
     version="$Version-experimental"; binarySHA256=$hash
     binaryBytes=(Get-Item (Join-Path $package 'men.rpx')).Length
-    checks=@('devkitPPC/wut RPX cross-compilation passed','ten-slot dock, TVii IDs and native navigation/boundary tests passed','metadata/Unicode/icon-validation/account paging host tests passed','search/sort/accent/keyboard boundary host tests passed','rounded texture alpha/pitch/capacity checks passed','rounded panel/keyboard alpha corners and account-gradient pixels verified','HOME/profile/accounts/search/options/shutdown previews visually inspected','sound WAV conversion and imported PCM validation passed')
+    checks=@('devkitPPC/wut RPX cross-compilation passed','nine-slot dock, TVii IDs and native navigation/boundary tests passed','metadata/Unicode/icon-validation/account paging host tests passed','search/sort/accent/keyboard boundary host tests passed','rounded texture alpha/pitch/capacity checks passed','rounded panel/keyboard alpha corners and account-gradient pixels verified','HOME/profile/accounts/search/options/shutdown previews visually inspected','sound WAV conversion and imported PCM validation passed')
     consoleTested=$false; emulatorTested=$false
     installEnvironment='existing environment or optional aroma-wiiunx2'; pluginsIncluded=$false
     previousHardwareResult='User reports no more crashes with version 0.4'
-    currentHardwareResult='0.6 TVii/RosePatcher, audio and applet transitions need hardware validation'
+    currentHardwareResult='0.6.1 software-row TVii and icon changes need hardware validation'
 } | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $package 'build-report.json')
 Write-Host "Staged $package"

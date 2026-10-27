@@ -30,9 +30,9 @@ $g.FillPath($gradient,$path);$gradient.Dispose();$path.Dispose()
 Text 'Wii U' 47 232 308 '#FFFFFF'
 Text 'YOUR SOFTWARE' 18 232 365 '#FFFFFF'
 Icon 'nxDock.png' 640 560
-$files=@('nxFriends.png','nxBrowser.png','nxDownloads.png','nxShop.png','nxMii.png','nxData.png','nxControllers.png','nxTvii.png','nxSettings.png','nxPower.png')
-for($i=0;$i -lt 10;$i++){if($i -eq 3){Icon 'nxRing.png' (280+$i*80) 560};Icon $files[$i] (280+$i*80) 560}
-Text 'Nintendo eShop' 23 520 626 '#1F5C9E'
+$files=@('nxFriends.png','nxBrowser.png','nxDownloads.png','nxShop.png','nxMii.png','nxData.png','nxControllers.png','nxSettings.png','nxPower.png')
+for($i=0;$i -lt 9;$i++){if($i -eq 3){Icon 'nxRing.png' (320+$i*80) 560};Icon $files[$i] (320+$i*80) 560}
+Text 'Nintendo eShop' 23 560 626 '#1F5C9E'
 Text 'WiiUNX2' 19 95 683 '#525252'
 # Same right-anchored badge/label/gap rules as the runtime footer.
 $right=1224

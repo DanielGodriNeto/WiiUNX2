@@ -22,8 +22,8 @@
 #include <cstdio>
 #include <cmath>
 
-static const char *dockNames[] = {"Friend List", "Internet Browser", "Download Management", "Nintendo eShop", "Mii Maker", "Data Management", "Controllers", "Nintendo TVii", "System Settings", "Power"};
-static const char *dockFiles[] = {"nxFriends.png", "nxBrowser.png", "nxDownloads.png", "nxShop.png", "nxMii.png", "nxData.png", "nxControllers.png", "nxTvii.png", "nxSettings.png", "nxPower.png"};
+static const char *dockNames[] = {"Friend List", "Internet Browser", "Download Management", "Nintendo eShop", "Mii Maker", "Data Management", "Controllers", "System Settings", "Power"};
+static const char *dockFiles[] = {"nxFriends.png", "nxBrowser.png", "nxDownloads.png", "nxShop.png", "nxMii.png", "nxData.png", "nxControllers.png", "nxSettings.png", "nxPower.png"};
 static const char *keys="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 static bool isMenu(uint64_t id) { return (id >> 32) == 0x00050010 && ((id & 0xffffff00) == 0x10040000 || (id & 0xffffff00) == 0x10040100 || (id & 0xffffff00) == 0x10040200); }
 
@@ -332,12 +332,8 @@ void MainWindow::activate() {
     case 4: launch(_SYSGetSystemApplicationTitleId(SYSTEM_APP_ID_MII_MAKER)); return;
     case 5: { SysAppSettingsArgs args{}; args.jumpTo=SYS_SETTINGS_JUMP_TO_DATA_MANAGEMENT; _SYSLaunchSettings(&args); return; }
     case 6: if(SYSSwitchToSyncControllerOnHBM()<0) showMessage("Unable to open controller pairing."); return;
-    case 7: {
-        for(auto id:nx::tviiTitles) if(SYSCheckTitleExists(id)) {launch(id);return;}
-        showMessage("Nintendo TVii is not installed. Project Rose requires the TVii applet to be installed.");return;
-    }
-    case 8: { SysAppSettingsArgs args{}; _SYSLaunchSettings(&args); return; }
-    case 9: showMessage("Power off the Wii U?",true); return;
+    case 7: { SysAppSettingsArgs args{}; _SYSLaunchSettings(&args); return; }
+    case 8: showMessage("Power off the Wii U?",true); return;
     }
     MCPAppType type=dockIndex==0 ? MCP_APP_TYPE_FRIEND_LIST : dockIndex==1 ? MCP_APP_TYPE_BROWSER : dockIndex==2 ? MCP_APP_TYPE_DOWNLOAD_MANAGEMENT : MCP_APP_TYPE_ESHOP;
     for(auto &t:tiles) if(t.type==type) { launch(t.id); return; }
@@ -522,7 +518,7 @@ void MainWindow::showOptions() {
         if(focusRow==0 && !visible.empty()) {
             char id[32]; snprintf(id,sizeof(id),"%016llX",(unsigned long long)selectedTile().id);
             showMessage(selectedTile().name+"\n\nTitle ID: "+id+"\n"+selectedTile().path);
-        } else showMessage("WiiUNX2 0.6 experimental\n\nD-pad / stick: select   A: open   B: back\nL / R: skip four titles\nTouch once to select, again to open");
+        } else showMessage("WiiUNX2 0.6.1 experimental\n\nD-pad / stick: select   A: open   B: back\nL / R: skip four titles\nTouch once to select, again to open");
 }
 
 void MainWindow::drawFooter(CVideo *v) {drawPrompts(v,prompts,1224,674);}

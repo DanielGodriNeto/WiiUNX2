@@ -1,14 +1,12 @@
 # WiiUNX2 0.6: compact, fine-outline glyphs following the supplied reference.
-Surface 'nxDock.png' 860 96 48 '#F5F5F5'
+Surface 'nxDock.png' 780 96 48 '#F5F5F5'
 Asset 'nxFriends.png' 64 {
     param($g)
     $b=[Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#E92335'));$g.FillEllipse($b,2,2,60,60);$b.Dispose()
-    $p=Pen '#FFFFFF' 1.8
-    $g.DrawEllipse($p,22,17,7,8);$g.DrawEllipse($p,35,17,7,8)
-    $g.DrawArc($p,18,27,15,13,180,180);$g.DrawArc($p,31,27,15,13,180,180);$p.Dispose()
-    $f=[Drawing.Font]::new('Arial',6.3,[Drawing.FontStyle]::Bold,[Drawing.GraphicsUnit]::Pixel)
-    $fmt=[Drawing.StringFormat]::new();$fmt.Alignment='Center';$fmt.LineAlignment='Center'
-    $g.DrawString('FRIENDS',$f,[Drawing.Brushes]::White,[Drawing.PointF]::new(32,43),$fmt);$fmt.Dispose();$f.Dispose()
+    # Two separate silhouettes; the shoulders have an explicit gap and never cross.
+    $p=Pen '#FFFFFF' 2.1
+    $g.DrawEllipse($p,18,20,9,10);$g.DrawEllipse($p,37,20,9,10)
+    $g.DrawArc($p,15,33,15,20,180,180);$g.DrawArc($p,34,33,15,20,180,180);$p.Dispose()
 }
 Asset 'nxBrowser.png' 64 {
     param($g)
@@ -42,10 +40,12 @@ Asset 'nxData.png' 64 {
 }
 Asset 'nxControllers.png' 64 {
     param($g)
-    $g.TranslateTransform(32,32);$g.RotateTransform(40);$g.TranslateTransform(-32,-32)
-    $p=Pen '#727779' 2;$body=RoundedPath 24 14 16 36 5;$g.DrawPath($p,$body)
-    $g.DrawEllipse($p,28.5,20,7,7)
-    foreach($point in @(@(32,34),@(28.5,37.5),@(35.5,37.5),@(32,41))) {$g.DrawEllipse($p,($point[0]-1),($point[1]-1),2,2)}
+    $g.TranslateTransform(32,32);$g.RotateTransform(38);$g.TranslateTransform(-32,-32)
+    $p=Pen '#727779' 2;$body=RoundedPath 24 13 16 38 3;$g.DrawPath($p,$body)
+    # Wii Remote cues kept compact: D-pad, A and two small lower buttons.
+    $g.DrawLine($p,28,22,36,22);$g.DrawLine($p,32,18,32,26)
+    $g.DrawEllipse($p,29.5,30,5,5)
+    $g.DrawEllipse($p,31,40,2,2);$g.DrawEllipse($p,31,45,2,2)
     $body.Dispose();$p.Dispose()
 }
 Asset 'nxTvii.png' 64 {

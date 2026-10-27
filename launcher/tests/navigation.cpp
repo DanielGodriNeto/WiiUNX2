@@ -13,12 +13,12 @@ int main() {
     assert(nx::hitTile(90,330,0,5)==-1);
     assert(nx::hitTile(232,190,0,5)==-1);
     assert(nx::hitTile(232,330,272*10,20)==10);
-    assert(nx::hitDock(226,560)==-1);
-    assert(nx::hitDock(270,560)==0);
-    assert(nx::hitDock(958,560)==8);
-    assert(nx::hitDock(1001,560)==9);
-    assert(nx::hitDock(1040,560)==-1);
-    assert(nx::hitDock(239,560)==-1);
+    assert(nx::hitDock(279,560)==-1);
+    assert(nx::hitDock(280,560)==0);
+    assert(nx::hitDock(320,560)==0);
+    assert(nx::hitDock(960,560)==8);
+    assert(nx::hitDock(999,560)==8);
+    assert(nx::hitDock(1000,560)==-1);
     for(int i=0;i<nx::dockCount;++i) assert(nx::hitDock(nx::dockFirst+i*nx::dockStep,560)==i);
     for(auto id:nx::tviiTitles) assert(nx::isTvii(id));
     assert(!nx::isTvii(0x0005001010040100ULL));
