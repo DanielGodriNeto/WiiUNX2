@@ -1,0 +1,13 @@
+**/build/
+**/release/
+**/lib/
+*.log
+*.elf
+*.rpx
+*.map
+*.o
+*.exe
+.env*
+launcher/src/resources/filelist.h
+launcher/data/fonts/*.ttf
+launcher/data/sounds/ui*.bin

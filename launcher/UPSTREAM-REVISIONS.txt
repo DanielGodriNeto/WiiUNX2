@@ -1,0 +1,7 @@
+# WiiUNX2 upstream revisions used for the 0.3 prototype
+launchiine https://github.com/wiiu-env/launchiine bd31cbe4f4487851e6a2aa79ad30fba5b73107d3
+libgui https://github.com/wiiu-env/libgui 62e2655b725d0a4af43f147063bdbea2aa05e6b1
+homebrew_on_menu_plugin (research only) https://github.com/wiiu-env/homebrew_on_menu_plugin c3b6d06301ba97f479da6227c8dd95bbda01d29f
+
+Toolchain: devkitPro wut 1.9.1, current installed devkitPPC.
+Local modifications are included as full source; upstream revisions alone do not reproduce WiiUNX2.
