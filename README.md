@@ -13,3 +13,5 @@ Code is licensed under GPL-3.0-or-later; see launcher/LICENSE and source copyrig
 This is a reviewed upload candidate, not a hardware-tested public release. Start history with this current source snapshot and use commits and version tags going forward. Older source snapshots should only be imported after separate review.
 
 Historical source snapshot reconstructed from WiiUNX2-menu-v0.6.2. Personal demo labels and excluded assets were sanitized; this is not a byte-identical original release. No new hardware or build validation was performed.
+
+See SOUNDS.md for optional user-supplied UI effects. Version tags identify reconstructed historical snapshots; commit timestamps reflect this import, not original development dates.
