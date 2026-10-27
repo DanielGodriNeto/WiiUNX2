@@ -29,10 +29,10 @@ $path.AddArc(340,438,20,20,0,90);$path.AddArc(104,438,20,20,90,90);$path.CloseFi
 $g.FillPath($gradient,$path);$gradient.Dispose();$path.Dispose()
 Text 'Wii U' 47 232 308 '#FFFFFF'
 Text 'YOUR SOFTWARE' 18 232 365 '#FFFFFF'
-Icon 'nxDock.png' 614 560
-$files=@('nxFriends.png','nxBrowser.png','nxDownloads.png','nxShop.png','nxMii.png','nxData.png','nxControllers.png','nxSettings.png','nxPower.png')
-for($i=0;$i -lt 9;$i++){if($i -eq 3){Icon 'nxRing.png' (270+$i*86) 560};Icon $files[$i] (270+$i*86) 560}
-Text 'Nintendo eShop' 23 640 626 '#1F5C9E'
+Icon 'nxDock.png' 640 560
+$files=@('nxFriends.png','nxBrowser.png','nxDownloads.png','nxShop.png','nxMii.png','nxData.png','nxControllers.png','nxTvii.png','nxSettings.png','nxPower.png')
+for($i=0;$i -lt 10;$i++){if($i -eq 3){Icon 'nxRing.png' (280+$i*80) 560};Icon $files[$i] (280+$i*80) 560}
+Text 'Nintendo eShop' 23 520 626 '#1F5C9E'
 Text 'WiiUNX2' 19 95 683 '#525252'
 # Same right-anchored badge/label/gap rules as the runtime footer.
 $right=1224
@@ -53,4 +53,6 @@ Icon 'nxTileFocus.png' 232 330
 $bmp.Save((Join-Path $root 'layout-focus-preview.png'),[Drawing.Imaging.ImageFormat]::Png)
 $crop=$bmp.Clone([Drawing.Rectangle]::new(88,186,288,288),$bmp.PixelFormat)
 $crop.Save((Join-Path $root 'card-detail-preview.png'),[Drawing.Imaging.ImageFormat]::Png);$crop.Dispose()
+$dockCrop=$bmp.Clone([Drawing.Rectangle]::new(190,510,900,150),$bmp.PixelFormat)
+$dockCrop.Save((Join-Path $root 'dock-detail-preview.png'),[Drawing.Imaging.ImageFormat]::Png);$dockCrop.Dispose()
 $g.Dispose();$bmp.Dispose()

@@ -1,6 +1,7 @@
 // WiiUNX2, GPL-3.0-or-later. Menu replacement built on launchiine/libgui.
 #pragma once
 #include "game/GameList.h"
+#include "MenuMusic.h"
 #include <gui/Gui.h>
 #include <memory>
 #include <thread>
@@ -9,7 +10,7 @@
 
 class MainWindow : public sigslot::has_slots<> {
 public:
-    MainWindow(int32_t w, int32_t h);
+    MainWindow(int32_t w, int32_t h, MenuMusic *audio);
     ~MainWindow();
     void drawDrc(CVideo *v) { draw(v); }
     void drawTv(CVideo *v) { draw(v); }
@@ -23,6 +24,12 @@ public:
     void lockGUI() { guiMutex.lock(); }
     void unlockGUI() { guiMutex.unlock(); }
 private:
+    struct FooterPrompt;
+    void handleInput(GuiController *c);
+    void requestSound(MenuSound sound);
+    MenuMusic *audio=nullptr;
+    MenuSound pendingSound=MenuSound::None;
+    unsigned shutdownFrame=0;
     struct Tile {
         uint64_t id;
         MCPAppType type;
@@ -47,6 +54,9 @@ private:
     void listChanged(GameList *list);
     void draw(CVideo *v);
     void drawFooter(CVideo *v);
+    void drawPrompts(CVideo *v,std::vector<FooterPrompt> &items,float right,float y);
+    int hitPrompt(const std::vector<FooterPrompt> &items,float x,float y,float centerY) const;
+    void confirmModal();
     void footerAction(size_t action);
     void showOptions();
     void activate();
@@ -77,9 +87,9 @@ private:
     std::recursive_mutex guiMutex, tilesMutex;
     std::vector<Tile> tiles;
     GuiImage background, modalShade, batteryOutline, batteryInside, batteryFill, batteryTip;
-    GuiText title, clockText, label, message, brand, hint, accountHeading, profileName, accountHelp;
+    GuiText title, clockText, label, message, brand, accountHeading, profileName;
     std::string lastTitle, lastLabel;
-    GuiText libraryStatus, searchHeading, searchQuery, searchHelp;
+    GuiText libraryStatus, searchHeading, searchQuery;
     std::vector<Account> accounts;
     bool actReady=false, accountsOpen=false;
     int accountIndex=0;
@@ -93,7 +103,7 @@ private:
         std::unique_ptr<GuiText> caption;
         float left=0,right=0;
     };
-    std::vector<FooterPrompt> prompts;
+    std::vector<FooterPrompt> prompts, modalPrompts, searchPrompts, accountPrompts;
     bool acReady=false, connected=false;
     int battery=-1;
     size_t selected = 0;

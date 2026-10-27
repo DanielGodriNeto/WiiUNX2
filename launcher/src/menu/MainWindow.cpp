@@ -2,6 +2,8 @@
 #include "MainWindow.h"
 #include "HomeGeometry.h"
 #include "Library.h"
+#include "game/SystemTitles.h"
+#include <tuple>
 #include "game/Metadata.h"
 #include "fs/FSUtils.h"
 #include "utils/logger.h"
@@ -20,12 +22,12 @@
 #include <cstdio>
 #include <cmath>
 
-static const char *dockNames[] = {"Friend List", "Internet Browser", "Download Management", "Nintendo eShop", "Mii Maker", "Data Management", "Controllers", "System Settings", "Power"};
-static const char *dockFiles[] = {"nxFriends.png", "nxBrowser.png", "nxDownloads.png", "nxShop.png", "nxMii.png", "nxData.png", "nxControllers.png", "nxSettings.png", "nxPower.png"};
+static const char *dockNames[] = {"Friend List", "Internet Browser", "Download Management", "Nintendo eShop", "Mii Maker", "Data Management", "Controllers", "Nintendo TVii", "System Settings", "Power"};
+static const char *dockFiles[] = {"nxFriends.png", "nxBrowser.png", "nxDownloads.png", "nxShop.png", "nxMii.png", "nxData.png", "nxControllers.png", "nxTvii.png", "nxSettings.png", "nxPower.png"};
 static const char *keys="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 static bool isMenu(uint64_t id) { return (id >> 32) == 0x00050010 && ((id & 0xffffff00) == 0x10040000 || (id & 0xffffff00) == 0x10040100 || (id & 0xffffff00) == 0x10040200); }
 
-MainWindow::MainWindow(int32_t w, int32_t h)
+MainWindow::MainWindow(int32_t w, int32_t h, MenuMusic *sound)
  : background(w,h,GX2Color{233,233,233,255}), modalShade(w,h,GX2Color{0,0,0,130}),
    batteryOutline(32,18,GX2Color{70,70,70,255}), batteryInside(28,14,GX2Color{233,233,233,255}),
    batteryFill(24,10,GX2Color{67,160,44,255}), batteryTip(3,8,GX2Color{70,70,70,255}),
@@ -34,15 +36,13 @@ MainWindow::MainWindow(int32_t w, int32_t h)
    label("",23,glm::vec4(.12f,.36f,.62f,1)),
    message("",26,glm::vec4(.12f,.12f,.12f,1)),
    brand("WiiUNX2",19,glm::vec4(.32f,.32f,.32f,1)),
-   hint("",23,glm::vec4(.12f,.36f,.62f,1)),
    accountHeading("Select a user",30,glm::vec4(.12f,.12f,.12f,1)),
    profileName("",22,glm::vec4(.12f,.12f,.12f,1)),
-   accountHelp("L / R  More users       B  Back       A  Select",22,glm::vec4(.12f,.36f,.62f,1)),
    libraryStatus("",18,glm::vec4(.4f,.4f,.4f,1)),
    searchHeading("Find software",30,glm::vec4(.12f,.12f,.12f,1)),
    searchQuery("",27,glm::vec4(.12f,.36f,.62f,1)),
-   searchHelp("D-pad: choose key   A: type   X: erase   +: done   B: close",20,glm::vec4(.3f,.3f,.3f,1)),
    width(w),height(h) {
+    audio=sound;
     title.setMaxWidth(1070,GuiText::DOTTED);
     message.setMaxWidth(840,GuiText::WRAP);
     profileName.setAlignment(ALIGN_LEFT | ALIGN_MIDDLE);
@@ -67,6 +67,16 @@ MainWindow::MainWindow(int32_t w, int32_t h)
         prompt.caption->setAlignment(ALIGN_LEFT | FTGX_ALIGN_BASELINE);
         prompts.push_back(std::move(prompt));
     }
+    auto addPrompt=[&](std::vector<FooterPrompt> &items,const char *badge,const char *caption) {
+        FooterPrompt prompt;prompt.badge=asset(badge);
+        prompt.caption=std::make_unique<GuiText>(caption,20,glm::vec4(.15f,.15f,.15f,1));
+        prompt.caption->setAlignment(ALIGN_LEFT | FTGX_ALIGN_BASELINE);items.push_back(std::move(prompt));
+    };
+    addPrompt(modalPrompts,"nxButtonB.png","Back");addPrompt(modalPrompts,"nxButtonA.png","OK");
+    addPrompt(searchPrompts,"nxButtonDpad.png","Choose key");addPrompt(searchPrompts,"nxButtonX.png","Erase");
+    addPrompt(searchPrompts,"nxButtonPlus.png","Done");addPrompt(searchPrompts,"nxButtonB.png","Back");addPrompt(searchPrompts,"nxButtonA.png","Type");
+    addPrompt(accountPrompts,"nxButtonL.png","Previous users");addPrompt(accountPrompts,"nxButtonR.png","Next users");
+    addPrompt(accountPrompts,"nxButtonB.png","Back");addPrompt(accountPrompts,"nxButtonA.png","Select");
     acReady=NNResult_IsSuccess(ACInitialize());
     for(int i=0;i<40;++i) {
         std::string caption=i<36 ? std::string(1,keys[i]) : i==36 ? "Space":i==37 ? "Erase":i==38 ? "Clear":"Done";
@@ -85,15 +95,15 @@ MainWindow::~MainWindow() {
     gameList.titleAdded.disconnect(this);
     gameList.titleUpdated.disconnect(this);
     gameList.titleListChanged.disconnect(this);
-    tiles.clear(); dock.clear();prompts.clear(); profile.reset(); ring.reset(); network.reset();tileBlank.reset();tileFocus.reset();tileShadow.reset();dockSurface.reset();
+    tiles.clear(); dock.clear();prompts.clear();modalPrompts.clear();searchPrompts.clear();accountPrompts.clear(); profile.reset(); ring.reset(); network.reset();tileBlank.reset();tileFocus.reset();tileShadow.reset();dockSurface.reset();
     modalPanel.reset();accountPanel.reset();accountCard.reset();accountFocus.reset();searchPanel.reset();keyCard.reset();keyFocus.reset();
     for(auto *data:assetData) Resources::RemoveImageData(data);
     if(acReady) ACFinalize();
 }
 void MainWindow::resume(FreeTypeGX *font) {
     launching=false;
-    for(auto *text:{&title,&clockText,&label,&message,&brand,&hint,&accountHeading,&profileName,&accountHelp,&libraryStatus,&searchHeading,&searchQuery,&searchHelp}) text->setFont(font);
-    for(auto &prompt:prompts) prompt.caption->setFont(font);
+    for(auto *text:{&title,&clockText,&label,&message,&brand,&accountHeading,&profileName,&libraryStatus,&searchHeading,&searchQuery}) text->setFont(font);
+    for(auto *items:{&prompts,&modalPrompts,&searchPrompts,&accountPrompts}) for(auto &prompt:*items) prompt.caption->setFont(font);
 }
 void MainWindow::listChanged(GameList *) {}
 void MainWindow::titleChanged(gameInfo *info) {
@@ -115,6 +125,7 @@ void MainWindow::drawText(GuiText &text,CVideo *v,float x,float y) {
 void MainWindow::process() {
     std::lock_guard<std::recursive_mutex> guard(tilesMutex);
     ++frame;
+    if(shutdownFrame && frame>=shutdownFrame) OSShutdown();
     if(frame==1) heartbeatTicks=OSGetSystemTime();
     if(!listStarted && frame>=2) {
         listStarted=true;focusRow=restore.row;dockIndex=restore.dock;sortMode=restore.sort;query=restore.query;
@@ -195,13 +206,13 @@ void MainWindow::draw(CVideo *v) {
         if(i<visible.size() && tiles[visible[i]].image) drawImage(*tiles[visible[i]].image,v,x,330);
         else drawImage(*tileBlank,v,x,330);
     }
-    drawImage(*dockSurface,v,614,560);
-    for(int i=0;i<9;++i) {
-        float x=270+i*86;
+    drawImage(*dockSurface,v,640,560);
+    for(int i=0;i<int(dock.size());++i) {
+        float x=nx::dockFirst+i*nx::dockStep;
         if(focusRow==1 && i==dockIndex) drawImage(*ring,v,x,560);
         drawImage(*dock[i],v,x,560);
     }
-    drawText(label,v,640,626);
+    drawText(label,v,nx::dockFirst+dockIndex*nx::dockStep,626);
     drawFooter(v);
     drawText(libraryStatus,v,640,487);
     drawText(brand,v,95,683);
@@ -210,45 +221,59 @@ void MainWindow::draw(CVideo *v) {
     if(modal) {
         drawImage(modalShade,v,640,360); drawImage(*modalPanel,v,640,360);
         drawText(message,v,640,335);
-        drawText(hint,v,640,480);
+        drawPrompts(v,modalPrompts,1040,480);
     }
 }
 void MainWindow::showMessage(const std::string &text,bool power) {
     message.setText(text.c_str()); modal=true; powerConfirm=power;
-    hint.setText(power ? "B  Cancel          A  Power off":"B  Back          A  OK");
+    requestSound(MenuSound::Click);
+    modalPrompts[0].caption->setText(power?"Cancel":"Back");
+    modalPrompts[1].caption->setText(power?"Power off":"OK");
 }
 void MainWindow::move(int delta) {
     restore.titleId=0;
-    if(focusRow==1) dockIndex=nx::moveSelection(dockIndex,delta,9);
+    if(focusRow==1) dockIndex=nx::moveSelection(dockIndex,delta,dock.size());
     else if(!visible.empty()) selected=nx::moveSelection(selected,delta,visible.size());
 }
+void MainWindow::requestSound(MenuSound sound) {
+    if(int(sound)>int(pendingSound)) pendingSound=sound;
+}
 void MainWindow::update(GuiController *c) {
+    auto before=std::make_tuple(focusRow,selected,dockIndex,accountIndex,keyboardIndex);
+    pendingSound=MenuSound::None;
+    handleInput(c);
+    if(before!=std::make_tuple(focusRow,selected,dockIndex,accountIndex,keyboardIndex)) requestSound(MenuSound::Navigate);
+    if(audio && pendingSound!=MenuSound::None) audio->playEffect(pendingSound);
+}
+void MainWindow::handleInput(GuiController *c) {
     using T=GuiTrigger;
     std::lock_guard<std::recursive_mutex> guard(tilesMutex);
     if(c->chanIdx==0) battery=static_cast<VPadController *>(c)->batteryLevel();
-    if(launching) return;
+    if(launching || shutdownFrame) return;
     uint32_t pressed=c->data.buttons_d;
     if(modal) {
-        if(pressed&T::BUTTON_B) { modal=false; return; }
-        if(pressed&T::BUTTON_A) { if(powerConfirm) OSShutdown(); modal=false; }
+        if(pressed&T::BUTTON_B) { modal=false;requestSound(MenuSound::Back);return; }
+        bool click=(c->chanIdx==0 && c->data.touched && !c->lastData.touched)||(c->chanIdx!=0 && c->data.validPointer && (pressed&T::BUTTON_A));
+        if(click) {int i=hitPrompt(modalPrompts,c->data.x+640,360-c->data.y,480);if(i==0){modal=false;requestSound(MenuSound::Back);}else if(i==1) confirmModal();}
+        else if(pressed&T::BUTTON_A) confirmModal();
         return;
     }
     if(searchOpen) {
-        if(pressed&(T::BUTTON_B|T::BUTTON_PLUS)) { searchOpen=false; return; }
+        if(pressed&(T::BUTTON_B|T::BUTTON_PLUS)) { searchOpen=false;requestSound(MenuSound::Back); return; }
         if(pressed&T::BUTTON_X) {searchKey(37);return;}
         if(pressed&(T::BUTTON_LEFT|T::STICK_L_LEFT)) keyboardIndex=nx::keyMove(keyboardIndex,-1,0);
         if(pressed&(T::BUTTON_RIGHT|T::STICK_L_RIGHT)) keyboardIndex=nx::keyMove(keyboardIndex,1,0);
         if(pressed&(T::BUTTON_UP|T::STICK_L_UP)) keyboardIndex=nx::keyMove(keyboardIndex,0,-1);
         if(pressed&(T::BUTTON_DOWN|T::STICK_L_DOWN)) keyboardIndex=nx::keyMove(keyboardIndex,0,1);
         bool click=(c->chanIdx==0 && c->data.touched && !c->lastData.touched) || (c->chanIdx!=0 && c->data.validPointer && (pressed&T::BUTTON_A));
-        if(click) {int key=nx::keyHit(c->data.x+640,360-c->data.y);if(key>=0) {keyboardIndex=key;searchKey(key);}}
+        if(click) {int key=nx::keyHit(c->data.x+640,360-c->data.y);if(key>=0) {keyboardIndex=key;searchKey(key);} else {int i=hitPrompt(searchPrompts,c->data.x+640,360-c->data.y,584);if(i==1) searchKey(37);else if(i==2||i==3){searchOpen=false;requestSound(MenuSound::Back);}else if(i==4) searchKey(keyboardIndex);}}
         else if(pressed&T::BUTTON_A) searchKey(keyboardIndex);
         return;
     }
-    if(!accountsOpen && (pressed&T::BUTTON_Y)) {searchOpen=true;searchQuery.setText(query.empty()?"Type a title...":query.c_str());return;}
-    if(!accountsOpen && (pressed&T::BUTTON_MINUS)) {sortMode=(sortMode+1)%3;rebuildView();return;}
+    if(!accountsOpen && (pressed&T::BUTTON_Y)) {searchOpen=true;requestSound(MenuSound::Click);searchQuery.setText(query.empty()?"Type a title...":query.c_str());return;}
+    if(!accountsOpen && (pressed&T::BUTTON_MINUS)) {sortMode=(sortMode+1)%3;requestSound(MenuSound::Click);rebuildView();return;}
     if(accountsOpen) {
-        if(pressed&T::BUTTON_B) { accountsOpen=false; return; }
+        if(pressed&T::BUTTON_B) { accountsOpen=false;requestSound(MenuSound::Back); return; }
         if(pressed&(T::BUTTON_LEFT|T::STICK_L_LEFT)) accountIndex=nx::moveSelection(accountIndex,-1,accounts.size());
         if(pressed&(T::BUTTON_RIGHT|T::STICK_L_RIGHT)) accountIndex=nx::moveSelection(accountIndex,1,accounts.size());
         if(pressed&T::BUTTON_L) accountIndex=nx::moveSelection(accountIndex,-6,accounts.size());
@@ -258,6 +283,7 @@ void MainWindow::update(GuiController *c) {
             float x=c->data.x+640,y=360-c->data.y;
             int i=nx::hitAccount(x,y,accountIndex/6,accounts.size());
             if(i>=0) { if(i==accountIndex) selectAccount(); else accountIndex=i; }
+            else {int action=hitPrompt(accountPrompts,x,y,516);if(action==0) accountIndex=nx::moveSelection(accountIndex,-6,accounts.size());else if(action==1) accountIndex=nx::moveSelection(accountIndex,6,accounts.size());else if(action==2){accountsOpen=false;requestSound(MenuSound::Back);}else if(action==3) selectAccount();}
         } else if(pressed&T::BUTTON_A) selectAccount();
         return;
     }
@@ -275,7 +301,7 @@ void MainWindow::update(GuiController *c) {
             }
         } else if(y>=520 && y<=600) {
             int i=nx::hitDock(x,y);
-            if(i>=0 && i<9) {
+            if(i>=0 && i<int(dock.size())) {
                 if(focusRow==1 && dockIndex==i) activate();
                 else { dockIndex=i; focusRow=1; }
             }
@@ -292,21 +318,26 @@ void MainWindow::update(GuiController *c) {
     }
     if(pressed & (T::BUTTON_DOWN|T::STICK_L_DOWN)) focusRow=focusRow==2 ? 0:1;
     if(pressed & (T::BUTTON_UP|T::STICK_L_UP)) focusRow=focusRow==1 ? 0:2;
-    if(pressed&T::BUTTON_B) {focusRow=0;if(!query.empty()){query.clear();rebuildView();}}
+    if(pressed&T::BUTTON_B) {if(focusRow!=0||!query.empty())requestSound(MenuSound::Back);focusRow=0;if(!query.empty()){query.clear();rebuildView();}}
     if(pressed&T::BUTTON_L) move(-4);
     if(pressed&T::BUTTON_R) move(4);
     if(pressed&T::BUTTON_PLUS) showOptions();
     if(pressed&T::BUTTON_A) activate();
 }
 void MainWindow::activate() {
+    requestSound(MenuSound::Click);
     if(focusRow==2) { openAccounts(); return; }
     if(focusRow==0) { if(!visible.empty()) launch(selectedTile().id); return; }
     switch(dockIndex) {
     case 4: launch(_SYSGetSystemApplicationTitleId(SYSTEM_APP_ID_MII_MAKER)); return;
     case 5: { SysAppSettingsArgs args{}; args.jumpTo=SYS_SETTINGS_JUMP_TO_DATA_MANAGEMENT; _SYSLaunchSettings(&args); return; }
     case 6: if(SYSSwitchToSyncControllerOnHBM()<0) showMessage("Unable to open controller pairing."); return;
-    case 7: { SysAppSettingsArgs args{}; _SYSLaunchSettings(&args); return; }
-    case 8: showMessage("Power off the Wii U?",true); return;
+    case 7: {
+        for(auto id:nx::tviiTitles) if(SYSCheckTitleExists(id)) {launch(id);return;}
+        showMessage("Nintendo TVii is not installed. Project Rose requires the TVii applet to be installed.");return;
+    }
+    case 8: { SysAppSettingsArgs args{}; _SYSLaunchSettings(&args); return; }
+    case 9: showMessage("Power off the Wii U?",true); return;
     }
     MCPAppType type=dockIndex==0 ? MCP_APP_TYPE_FRIEND_LIST : dockIndex==1 ? MCP_APP_TYPE_BROWSER : dockIndex==2 ? MCP_APP_TYPE_DOWNLOAD_MANAGEMENT : MCP_APP_TYPE_ESHOP;
     for(auto &t:tiles) if(t.type==type) { launch(t.id); return; }
@@ -321,6 +352,10 @@ void MainWindow::launch(uint64_t id) {
     auto error=MCP_GetTitleInfo(handle,id,&info); MCP_Close(handle);
     if(error!=0) { showMessage("This title is unavailable. Reconnect its storage and restart WiiUNX2."); return; }
     int32_t result=0;
+    if(nx::isTvii(id)) {
+        if(_SYSSwitchTo(SYSAPP_PFID_TVII)<0) showMessage("Nintendo TVii could not open. Check TVii installation and Project Rose settings.");
+        return;
+    }
     switch(info.appType) {
     case MCP_APP_TYPE_BROWSER: result=SYSSwitchToBrowser(nullptr); break;
     case MCP_APP_TYPE_ESHOP: result=SYSSwitchToEShop(nullptr); break;
@@ -414,9 +449,10 @@ void MainWindow::refreshAccounts() {
 }
 void MainWindow::openAccounts() {
     if(!actReady || accounts.empty()) {showMessage("No Wii U users could be read. Open the original Wii U Menu to configure an account.");return;}
-    accountsOpen=true;
+    accountsOpen=true;requestSound(MenuSound::Click);
 }
 void MainWindow::selectAccount() {
+    requestSound(MenuSound::Click);
     if(accounts.empty()) return;
     auto &account=accounts[accountIndex];
     if(account.slot==activeSlot) {accountsOpen=false;return;}
@@ -446,7 +482,7 @@ void MainWindow::drawAccounts(CVideo *v) {
         drawText(*account.caption,v,x,411);
     }
     // These strings have stable storage across both screen draws.
-    drawText(accountHelp,v,640,514);
+    drawPrompts(v,accountPrompts,1120,516);
 }
 
 void MainWindow::rebuildView() {
@@ -462,6 +498,7 @@ void MainWindow::rebuildView() {
     libraryStatus.setTextf("%u software   /   %s%s",unsigned(visible.size()),nx::sortName(sortMode),!loaded ? "   /   Loading...":query.empty()?"":"   /   Filter active (B: clear)");
 }
 void MainWindow::searchKey(int key) {
+    requestSound(MenuSound::Click);
     if(key<36 && query.size()<48) query+=keys[key];
     else if(key==36 && query.size()<48) query+=' ';
     else if(key==37 && !query.empty()) query.pop_back();
@@ -477,29 +514,39 @@ void MainWindow::drawSearch(CVideo *v) {
         if(i==keyboardIndex) drawImage(*keyFocus,v,x,y);
         drawImage(*keyCard,v,x,y);drawText(*keyLabels[i],v,x,y);
     }
-    drawText(searchHelp,v,640,580);
+    drawPrompts(v,searchPrompts,1120,584);
 }
 
 void MainWindow::showOptions() {
+    requestSound(MenuSound::Click);
         if(focusRow==0 && !visible.empty()) {
             char id[32]; snprintf(id,sizeof(id),"%016llX",(unsigned long long)selectedTile().id);
             showMessage(selectedTile().name+"\n\nTitle ID: "+id+"\n"+selectedTile().path);
-        } else showMessage("WiiUNX2 0.5.2 experimental\n\nD-pad / stick: select   A: open   B: back\nL / R: skip four titles\nTouch once to select, again to open");
+        } else showMessage("WiiUNX2 0.6 experimental\n\nD-pad / stick: select   A: open   B: back\nL / R: skip four titles\nTouch once to select, again to open");
 }
 
-void MainWindow::drawFooter(CVideo *v) {
-    // Pack from a shared right margin using actual font metrics, on a common baseline.
-    float right=1224;
-    for(int i=int(prompts.size())-1;i>=0;--i) {
-        auto &prompt=prompts[i];
-        float width=28+9+prompt.caption->getTextWidth();
+void MainWindow::drawFooter(CVideo *v) {drawPrompts(v,prompts,1224,674);}
+void MainWindow::drawPrompts(CVideo *v,std::vector<FooterPrompt> &items,float right,float y) {
+    for(int i=int(items.size())-1;i>=0;--i) {
+        auto &prompt=items[i];float badgeWidth=prompt.badge->getWidth();
+        float width=badgeWidth+9+prompt.caption->getTextWidth();
         prompt.left=right-width;prompt.right=right;
-        drawImage(*prompt.badge,v,prompt.left+14,674);
-        drawText(*prompt.caption,v,prompt.left+37,681);
+        drawImage(*prompt.badge,v,prompt.left+badgeWidth/2,y);
+        drawText(*prompt.caption,v,prompt.left+badgeWidth+9,y+7);
         right=prompt.left-28;
     }
 }
+int MainWindow::hitPrompt(const std::vector<FooterPrompt> &items,float x,float y,float centerY) const {
+    if(std::fabs(y-centerY)>25) return -1;
+    for(size_t i=0;i<items.size();++i) if(x>=items[i].left-8&&x<=items[i].right+8) return i;
+    return -1;
+}
+void MainWindow::confirmModal() {
+    requestSound(MenuSound::Click);modal=false;
+    if(powerConfirm) shutdownFrame=frame+12;
+}
 void MainWindow::footerAction(size_t action) {
+    requestSound(MenuSound::Click);
     if(action==0) {searchOpen=true;searchQuery.setText(query.empty()?"Type a title...":query.c_str());}
     else if(action==1) {sortMode=(sortMode+1)%3;rebuildView();}
     else if(action==2) showOptions();

@@ -1,12 +1,12 @@
-# WiiUNX2 0.5.2 — rounded menus, profiles and refined icons
+# WiiUNX2 0.6 — TVii, interface sounds and consistent controls
 
-This visual update rounds the user-picker panel/cards, options/power dialogs, search panel and keyboard keys. The selected user and search key use a cyan-to-pink gradient outline consistent with HOME. The picker panel also has a subtle cool-to-warm tint. Mii pictures are clipped to circular avatars.
+This build adds Nintendo TVii to the software row when an installed regional TVii title is found. The ten-icon dock also has a TVii shortcut. TVii launches through the system applet-switch call used by Aroma's AutobootModule, rather than as a normal game. Project Rose remains responsible for its service patches; this launcher does not install TVii or modify your plugin settings. TVii launching/returning with RosePatcher needs hardware validation.
 
-The focused HOME profile name is left-aligned at x=128, just beside the avatar, with a bounded width for long names. It no longer sits at a distant fixed center point.
+Options, search, account selection and power confirmation now share HOME's controller badges, font baseline, measured spacing and touch support. The dock has compact outline glyphs, a centered ten-slot capsule and captions beneath the focused icon, based on the supplied screenshots. Wii U destination symbols remain distinct from Switch-only services.
 
-The dock uses newly drawn, consistently weighted glyphs for Friend List, Browser, Download Management, eShop, Mii Maker, Data Management, Controllers, Settings and Power. Their shapes retain their Wii U destinations while taking visual cues from the reference. Both the browser globe and the Wi-Fi status icon are refined; Wi-Fi uses symmetric arcs sharing a center.
+User-supplied Switch WAV effects are embedded for navigation, clicking and backing out. They are converted to 32 kHz mono PCM and preloaded into aligned buffers. One separate AX voice plays effects alongside the ambient music, without file reads or a decoder thread during interaction. A navigation sound is emitted only when input changes selection. The effects and music are stopped/freed on foreground release and recreated on return. Hardware still needs to confirm loudness, plugin interaction and applet transitions.
 
-The executable compiles, menu/keyboard/rounding tests pass, and generated panel corners/gradient pixels have been checked. These visuals still need confirmation on hardware. Search, sorting, background loading and music are retained.
+The executable compiles; sound-conversion, navigation, keyboard and texture checks pass. Complete source, conversion tools and sound provenance are included.
 
 ## Update
 
@@ -38,19 +38,39 @@ Metadata enumeration and reads now run on a joined CPU worker. The render thread
 
 The interface remains usable while titles populate. This does not eliminate storage latency or guarantee a fixed frame rate; a new icon still has to be decoded/uploaded on the rendering thread. Workers are joined before foreground resources are released.
 
-Visuals include rounded software corners, soft card shadows, a pastel selection border/ring, a translucent dock surface, refined controller/settings/shop glyphs and aligned controller prompts. The dock keeps working Wii U destinations rather than displaying Switch-only services. `layout-preview.png`, `layout-focus-preview.png`, `card-detail-preview.png`, `profile-hover-preview.png`, `accounts-preview.png` and `search-preview.png` are illustrative previews with placeholder art and a desktop font, not hardware screenshots. The focused-card close-up shows the intended rounded outline.
+Visuals include rounded software corners, soft card shadows, a pastel selection border/ring, a translucent dock surface, refined controller/settings/shop glyphs and aligned controller prompts. The dock keeps working Wii U destinations rather than displaying Switch-only services. `layout-preview.png`, `layout-focus-preview.png`, `card-detail-preview.png`, `profile-hover-preview.png`, `accounts-preview.png`, `search-preview.png`, `options-preview.png` and `shutdown-preview.png` are illustrative previews with placeholder art and a desktop font, not hardware screenshots. The focused-card close-up shows the intended rounded outline.
 
 ## Menu music
 
-0.4 did not initialize its own audio, leaving the system transition/loading sound audible. 0.5 initializes AX and plays an original, quiet 24-second ambient loop on TV and GamePad. This is **original WiiUNX2 music**, not the Nintendo Wii U or Switch 2 soundtrack. No decoder thread is needed: one aligned PCM buffer and one AX voice are used. The voice is stopped/freed before releasing the foreground, and recreated on return. AX is shut down only when this menu initialized it.
+0.4 did not initialize its own audio, leaving the system transition/loading sound audible. 0.5 initializes AX and plays an original, quiet 24-second ambient loop on TV and GamePad. This is **original WiiUNX2 music**, not the Nintendo Wii U or Switch 2 soundtrack. The ambient track uses one aligned PCM buffer and one AX voice. Navigation/click/back effects use a separate preloaded voice. The voice is stopped/freed before releasing the foreground, and recreated on return. AX is shut down only when this menu initialized it.
 
 The composition is reproducible with `node tools/Generate-Music.mjs`. Audio handoff, volume and return behavior need hardware testing, especially with plugins that also use audio.
+
+## Sound sources and customization
+
+This customized package uses your provided files:
+
+| Interaction | Supplied WAV | Embedded PCM |
+|---|---|---|
+| Selection movement | Select.wav | uiMove.bin |
+| Activate/type/click | Klick.wav | uiClick.bin |
+| Back/cancel | Enter & Back.wav | uiBack.bin |
+
+These effects retain their original copyrights and are excluded from the source-code GPL license. Source hashes and conversion details are in SOUND-ASSETS.json. The ambient music remains an original composition. The older upstream audio files are unused.
+
+To regenerate effects, run:
+
+```powershell
+node tools/Import-Sounds.mjs 'path/to/Nintendo Switch System Bios SFX'
+```
+
+The generated files are already present, so rebuilding the shipped source does not require your Downloads folder. The importer accepts bounded PCM16/24/32 or IEEE-float32 mono/stereo WAV input and records the provenance of this custom build.
 
 ## Diagnostics and validation
 
 No SD files were modified during this update. Design validation used generated previews and texture alpha/edge checks.
 
-Test a cold boot with a large library, search while loading, switch sort with a selected game, try an empty result, clear the filter, scroll, and return from Mii Maker. Check both TV and GamePad audio and confirm no menu music continues inside another title.
+Test repeated navigation/touch activation, the dialog prompt buttons, TVii from both the row and dock, and returning from TVii/Mii Maker. Check sounds after each return and verify they stop when another app opens. Check both TV and GamePad audio and confirm no menu music continues inside another title.
 
 `SD:/wiiu/wiiunx2.log` is capped at 1 MiB. It now includes metadata scan duration and the time taken for each 600 menu frames. Rename an old full log before testing if you want new diagnostics. It does not log search text, account names or passwords.
 
@@ -79,6 +99,6 @@ g++ -std=c++17 -O2 launcher/tests/library.cpp -o library-test
 ./library-test
 ```
 
-Tests cover navigation/touch boundaries, account pages, metadata fallback, Unicode, invalid icon data, search normalization, sort comparisons, keyboard boundaries, and rounded texture alpha/pitch/capacity safety. The additional rounding test is `launcher/tests/rounded.cpp`. They cannot verify GX2/ACT/AX behavior, real-device performance or plugin compatibility.
+Run the sound importer tests with `node --test launcher/tests/sounds.mjs`. Tests cover ten-slot dock/TVii ID boundaries, navigation/touch boundaries, account pages, metadata fallback, Unicode, invalid icon data, search normalization, sort comparisons, keyboard boundaries, and rounded texture alpha/pitch/capacity safety. The additional rounding test is `launcher/tests/rounded.cpp`. They cannot verify GX2/ACT/AX behavior, real-device performance or plugin compatibility.
 
 Remaining features include folders, persistent ordering, play-history sorting, disc hotplug, quick-start integration and native Aroma homebrew discovery. The Men.pack/Men2.pack theme builder remains a separate fallback. See LICENSE and THIRD-PARTY.md.

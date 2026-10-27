@@ -164,7 +164,7 @@ bool Application::procUI() {
 
                     if (mainWindow == nullptr) {
                         DEBUG_FUNCTION_LINE("Initialize main window");
-                        mainWindow = new MainWindow(video->getTvWidth(), video->getTvHeight());
+                        mainWindow = new MainWindow(video->getTvWidth(), video->getTvHeight(), &menuMusic);
                         mainWindow->restoreView(savedView);
                     }
                     mainWindow->resume(fontSystem);

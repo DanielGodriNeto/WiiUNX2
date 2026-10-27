@@ -1,6 +1,7 @@
 // WiiUNX2 GPL-3.0-or-later; derived from launchiine GameList.
 #include "GameList.h"
 #include "Metadata.h"
+#include "SystemTitles.h"
 #include "fs/FSUtils.h"
 #include "utils/logger.h"
 #include <nn/acp/title.h>
@@ -47,12 +48,21 @@ int32_t GameList::load() {
             fullGameList.push_back(info); titleAdded(info);
         }
     }
+    // TVii has no named app-type constant in wut and was omitted by the type allowlist.
+    // Probe the three documented regional titles; only append titles MCP reports installed.
+    for(auto id:nx::tviiTitles) {
+        MCPTitleListType item{};
+        if(getGameInfo(id) || MCP_GetTitleInfo(handle,id,&item)!=0) continue;
+        auto *info=new gameInfo{};info->titleId=id;info->appType=item.appType;
+        info->gamePath=nx::bounded(item.path,sizeof(item.path));info->name="Nintendo TVii";
+        fullGameList.push_back(info);titleAdded(info);
+    }
     MCP_Close(handle);
     DEBUG_FUNCTION_LINE("Enumerated %u installed titles",unsigned(fullGameList.size()));
     titleListChanged(this);
     return fullGameList.size();
 }
-// Called once per rendered frame, on the GX2 owner thread. No background texture creation.
+// CPU metadata only. Called by the loader worker; never creates a GPU texture.
 bool GameList::loadNext() {
     if(nextMetadata>=fullGameList.size()) return true;
     auto *info=fullGameList[nextMetadata++];

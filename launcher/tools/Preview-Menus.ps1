@@ -11,6 +11,18 @@ function Save-Preview($name) {
 function Shade {
     $b=[Drawing.SolidBrush]::new([Drawing.Color]::FromArgb(130,0,0,0));$g.FillRectangle($b,0,0,1280,720);$b.Dispose()
 }
+function PromptRow($items,$right,$y) {
+    $font=[Drawing.Font]::new('Segoe UI',20,[Drawing.FontStyle]::Regular,[Drawing.GraphicsUnit]::Pixel)
+    $fmt=[Drawing.StringFormat]::GenericTypographic.Clone()
+    for($i=$items.Count-1;$i -ge 0;$i--) {
+        $caption=$items[$i][1];$textWidth=$g.MeasureString($caption,$font,1000,$fmt).Width
+        $left=$right-(28+9+$textWidth)
+        Icon ("nxButton"+$items[$i][0]+".png") ($left+14) $y
+        $g.DrawString($caption,$font,[Drawing.Brushes]::DarkSlateGray,[Drawing.PointF]::new(($left+37),($y-14)),$fmt)
+        $right=$left-28
+    }
+    $fmt.Dispose();$font.Dispose()
+}
 Start-Preview
 Icon 'nxRing.png' 80 75
 $font=[Drawing.Font]::new('Segoe UI',22,[Drawing.FontStyle]::Regular,[Drawing.GraphicsUnit]::Pixel)
@@ -26,7 +38,7 @@ for($i=0;$i -lt 6;$i++) {
     $g.DrawImage($avatar,[single]($x-44),[single]289,[single]88,[single]88);$avatar.Dispose()
     Text (@('User 1','Player 2','Guest','Player 4','Player 5','Player 6')[$i]) 20 $x 411
 }
-Text 'L / R  More users       B  Back       A  Select' 22 640 514 '#34659B'
+PromptRow @(@('L','Previous users'),@('R','Next users'),@('B','Back'),@('A','Select')) 1120 516
 Save-Preview 'accounts-preview.png'
 Start-Preview
 Shade;Icon 'nxSearchPanel.png' 640 360
@@ -39,5 +51,16 @@ for($i=0;$i -lt 40;$i++) {
     $caption=if($i -lt 36){[string]$letters[$i]}else{@('Space','Erase','Clear','Done')[$i-36]}
     Text $caption $(if($i -lt 36){22}else{16}) $x $y
 }
-Text 'D-pad: choose key   A: type   X: erase   +: done   B: close' 20 640 580
+PromptRow @(@('Dpad','Choose key'),@('X','Erase'),@('Plus','Done'),@('B','Back'),@('A','Type')) 1120 584
 Save-Preview 'search-preview.png'
+
+Start-Preview
+Shade;Icon 'nxModalPanel.png' 640 360
+Text 'Software options' 26 640 295;Text 'Title information and installed location' 20 640 350
+PromptRow @(@('B','Back'),@('A','OK')) 1040 480
+Save-Preview 'options-preview.png'
+Start-Preview
+Shade;Icon 'nxModalPanel.png' 640 360
+Text 'Power off the Wii U?' 26 640 335
+PromptRow @(@('B','Cancel'),@('A','Power off')) 1040 480
+Save-Preview 'shutdown-preview.png'

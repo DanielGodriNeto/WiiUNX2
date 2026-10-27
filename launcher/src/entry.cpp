@@ -28,7 +28,7 @@ int32_t main(int32_t argc, char **argv) {
         udpInit  = WHBLogUdpInit();
     }
     WHBAddLogHandler(sdLog);
-    DEBUG_FUNCTION_LINE("Starting WiiUNX2 0.5.2 rounded-menu/icon build");
+    DEBUG_FUNCTION_LINE("Starting WiiUNX2 0.6 TVii/sound/control build");
 
     DEBUG_FUNCTION_LINE("Start main application");
     Application::instance()->exec();

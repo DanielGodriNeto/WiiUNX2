@@ -21,3 +21,7 @@ The account picker uses local ACT APIs. It does not implement network login/sess
 ## Version 0.5
 
 The user reports no more crashes with 0.4. Version 0.5 adds CPU-only loading workers and an AX music voice while retaining render-thread GPU ownership. These changes need renewed hardware validation. The supplied SD log was inaccessible because E: was not mounted. No supplied plugin or setup module was modified.
+
+## Version 0.6
+
+TVii now has installed-title discovery for all three regional IDs and uses SYSAPP_PFID_TVII for launching. RosePatcher remains responsible for its network/service patches; the launcher does not install or configure it. The TVii route and returning to this menu require hardware validation. UI effects use a second AX voice; audio handoff with plugins also needs validation.

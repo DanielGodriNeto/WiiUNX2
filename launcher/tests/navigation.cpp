@@ -1,4 +1,5 @@
 #include "../src/menu/HomeGeometry.h"
+#include "../src/game/SystemTitles.h"
 #include <cassert>
 #include <cstdio>
 int main() {
@@ -15,7 +16,13 @@ int main() {
     assert(nx::hitDock(226,560)==-1);
     assert(nx::hitDock(270,560)==0);
     assert(nx::hitDock(958,560)==8);
-    assert(nx::hitDock(1001,560)==-1);
+    assert(nx::hitDock(1001,560)==9);
+    assert(nx::hitDock(1040,560)==-1);
+    assert(nx::hitDock(239,560)==-1);
+    for(int i=0;i<nx::dockCount;++i) assert(nx::hitDock(nx::dockFirst+i*nx::dockStep,560)==i);
+    for(auto id:nx::tviiTitles) assert(nx::isTvii(id));
+    assert(!nx::isTvii(0x0005001010040100ULL));
+    assert(!nx::isTvii(0x000500301001310bULL));
     assert(nx::hitDock(270,519)==-1);
     for(int count=0;count<1000;++count) {
         int selected=0;

@@ -1,0 +1,32 @@
+{
+  "source": "User-provided Nintendo Switch HOME Menu sound folder; these assets are not GPL-licensed",
+  "files": [
+    {
+      "input": "Select.wav",
+      "sourceSHA256": "5f5d4ff2efad109c0c33796c08cdbe91f94d9c1526064926947acacda65cabc9",
+      "output": "uiMove.bin",
+      "bytes": 730,
+      "rate": 32000,
+      "channels": 1,
+      "format": "signed PCM16 big-endian"
+    },
+    {
+      "input": "Klick.wav",
+      "sourceSHA256": "c974ba47fff3c864d2b7ae0d6b8a5b5bf7ac3025205baad27cc5805341fa5082",
+      "output": "uiClick.bin",
+      "bytes": 486,
+      "rate": 32000,
+      "channels": 1,
+      "format": "signed PCM16 big-endian"
+    },
+    {
+      "input": "Enter & Back.wav",
+      "sourceSHA256": "f89675f2cccedf5c448d11356bbf2a4c0d69f2e13a7bca11f7ff7d913fe04b3b",
+      "output": "uiBack.bin",
+      "bytes": 4958,
+      "rate": 32000,
+      "channels": 1,
+      "format": "signed PCM16 big-endian"
+    }
+  ]
+}
