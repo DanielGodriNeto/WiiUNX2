@@ -3,10 +3,12 @@ Surface 'nxDock.png' 780 96 48 '#F5F5F5'
 Asset 'nxFriends.png' 64 {
     param($g)
     $b=[Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#E92335'));$g.FillEllipse($b,2,2,60,60);$b.Dispose()
-    # Two separate silhouettes; the shoulders have an explicit gap and never cross.
+    # The shoulder arcs share one endpoint, forming one continuous outline without a crossing.
     $p=Pen '#FFFFFF' 2.1
-    $g.DrawEllipse($p,18,20,9,10);$g.DrawEllipse($p,37,20,9,10)
-    $g.DrawArc($p,15,33,15,20,180,180);$g.DrawArc($p,34,33,15,20,180,180);$p.Dispose()
+    $g.DrawEllipse($p,19,20,9,10);$g.DrawEllipse($p,36,20,9,10)
+    $shoulders=[Drawing.Drawing2D.GraphicsPath]::new()
+    $shoulders.AddArc(15,33,17,20,180,180);$shoulders.AddArc(32,33,17,20,180,180)
+    $g.DrawPath($p,$shoulders);$shoulders.Dispose();$p.Dispose()
 }
 Asset 'nxBrowser.png' 64 {
     param($g)

@@ -1,4 +1,4 @@
-param([string]$Version='0.6.1')
+param([string]$Version='0.6.2')
 $ErrorActionPreference='Stop'
 $workspace=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $package=Join-Path $workspace "dist/WiiUNX2-menu-v$Version"
@@ -43,6 +43,6 @@ foreach($name in @('ppc-freetype','ppc-harfbuzz','ppc-libgd','ppc-libpng','ppc-l
     consoleTested=$false; emulatorTested=$false
     installEnvironment='existing environment or optional aroma-wiiunx2'; pluginsIncluded=$false
     previousHardwareResult='User reports no more crashes with version 0.4'
-    currentHardwareResult='0.6.1 software-row TVii and icon changes need hardware validation'
+    currentHardwareResult='0.6.2 Friends icon update need hardware validation'
 } | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $package 'build-report.json')
 Write-Host "Staged $package"

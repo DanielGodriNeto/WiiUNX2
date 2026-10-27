@@ -1,8 +1,8 @@
-# WiiUNX2 0.6.1 — software-row TVii and simplified icons
+# WiiUNX2 0.6.2 — connected Friends silhouettes
 
 This build keeps Nintendo TVii in the software row when an installed regional TVii title is found. TVii appears only as a normal selectable software tile; it has no dock shortcut. TVii launches through the system applet-switch call used by Aroma's AutobootModule, rather than as a normal game. Project Rose remains responsible for its service patches; this launcher does not install TVii or modify your plugin settings. TVii launching/returning with RosePatcher needs hardware validation.
 
-The Friends badge has no embedded text and uses separated silhouettes without intersecting shoulder lines. The controller glyph uses a slim Wii Remote silhouette with a D-pad, A and two small lower buttons, retaining the compact outline style.
+The Friends badge has no embedded text. Its shoulder outlines now meet at one shared endpoint without crossing. The controller glyph uses a slim Wii Remote silhouette with a D-pad, A and two small lower buttons, retaining the compact outline style.
 
 Options, search, account selection and power confirmation now share HOME's controller badges, font baseline, measured spacing and touch support. The dock has compact outline glyphs, a centered nine-slot capsule and captions beneath the focused icon, based on the supplied screenshots. Wii U destination symbols remain distinct from Switch-only services.
 
