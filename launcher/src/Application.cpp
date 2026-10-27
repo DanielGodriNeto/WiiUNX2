@@ -43,7 +43,7 @@ Application::Application()
     controller[3] = new WPadController(GuiTrigger::CHANNEL_4);
     controller[4] = new WPadController(GuiTrigger::CHANNEL_5);
 
-    // This menu is silent; do not start the old audio/async worker infrastructure.
+    // Audio uses one owned PCM voice; the old decoder/async workers stay disabled.
     exitApplication = false;
 
     ProcUIInit(OSSavesDone_ReadyToRelease);
@@ -161,6 +161,7 @@ bool Application::procUI() {
                         mainWindow->restoreView(savedView);
                     }
                     mainWindow->resume(fontSystem);
+                    menuMusic.start();
                 }
                 executeProcess = true;
             }
@@ -228,6 +229,7 @@ void Application::executeThread() {
 }
 
 void Application::releaseGraphics() {
+    menuMusic.stop();
     if (!video) return;
     // Finish commands before freeing textures, glyphs, shader buffers or scanout memory.
     GX2DrawDone();

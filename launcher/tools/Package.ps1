@@ -1,4 +1,4 @@
-param([string]$Version='0.4')
+param([string]$Version='0.5')
 $ErrorActionPreference='Stop'
 $workspace=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $package=Join-Path $workspace "dist/WiiUNX2-menu-v$Version"
@@ -39,10 +39,10 @@ foreach($name in @('ppc-freetype','ppc-harfbuzz','ppc-libgd','ppc-libpng','ppc-l
 @{
     version="$Version-experimental"; binarySHA256=$hash
     binaryBytes=(Get-Item (Join-Path $package 'men.rpx')).Length
-    checks=@('devkitPPC/wut RPX cross-compilation passed','native C++ navigation/boundary tests passed','metadata/Unicode/icon-validation/account paging host tests passed')
+    checks=@('devkitPPC/wut RPX cross-compilation passed','native C++ navigation/boundary tests passed','metadata/Unicode/icon-validation/account paging host tests passed','search/sort/accent/keyboard boundary host tests passed')
     consoleTested=$false; emulatorTested=$false
     installEnvironment='existing environment or optional aroma-wiiunx2'; pluginsIncluded=$false
-    previousHardwareResult='0.3 boot/render confirmed with normal Aroma plugins; intermittent crashes reported'
-    currentHardwareResult='0.4 needs hardware validation'
+    previousHardwareResult='User reports no more crashes with version 0.4'
+    currentHardwareResult='0.5 needs hardware validation; supplied SD log drive was unavailable'
 } | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $package 'build-report.json')
 Write-Host "Staged $package"

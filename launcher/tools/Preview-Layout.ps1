@@ -21,15 +21,20 @@ Text '11:52 AM' 23 1070 76
 Icon 'nxNetwork.png' 1160 76
 $pen=[Drawing.Pen]::new([Drawing.Color]::DimGray,2);$g.DrawRectangle($pen,1199,67,32,18);$pen.Dispose()
 $green=[Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#43A02C'));$g.FillRectangle($green,1203,71,24,10);$green.Dispose()
-for($i=0;$i -lt 5;$i++) { $g.FillRectangle([Drawing.Brushes]::WhiteSmoke,(104+$i*272),202,256,256) }
+for($i=0;$i -lt 5;$i++) { Icon 'nxTileShadow.png' (232+$i*272) 330; $g.FillRectangle([Drawing.Brushes]::WhiteSmoke,(104+$i*272),202,256,256); Icon 'nxTileMask.png' (232+$i*272) 330 }
 $gradient=[Drawing.Drawing2D.LinearGradientBrush]::new([Drawing.Point]::new(104,202),[Drawing.Point]::new(360,458),[Drawing.Color]::FromArgb(50,143,195),[Drawing.Color]::FromArgb(74,204,178))
 $g.FillRectangle($gradient,104,202,256,256);$gradient.Dispose()
 Text 'Wii U' 47 232 308 '#FFFFFF'
 Text 'YOUR SOFTWARE' 18 232 365 '#FFFFFF'
+Icon 'nxTileMask.png' 232 330
+Icon 'nxDock.png' 614 560
 $files=@('nxFriends.png','nxBrowser.png','nxDownloads.png','nxShop.png','nxMii.png','nxData.png','nxControllers.png','nxSettings.png','nxPower.png')
 for($i=0;$i -lt 9;$i++){if($i -eq 3){Icon 'nxRing.png' (270+$i*86) 560};Icon $files[$i] (270+$i*86) 560}
 Text 'Nintendo eShop' 23 640 626 '#1F5C9E'
 Text 'WiiUNX2' 19 95 683 '#525252'
-Text '+  Options     A  OK' 22 1080 683
+Text 'Y  Search' 19 800 683
+Text '-  Sort' 19 920 683
+Text '+  Options     A  OK' 19 1090 683
+Text '24 software   /   Name A-Z' 18 640 487 '#666666'
 $bmp.Save((Join-Path $root 'layout-preview.png'),[Drawing.Imaging.ImageFormat]::Png)
 $g.Dispose();$bmp.Dispose()

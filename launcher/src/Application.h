@@ -16,6 +16,7 @@
  ****************************************************************************/
 #ifndef _APPLICATION_H
 #define _APPLICATION_H
+#include "MenuMusic.h"
 
 #include "menu/MainWindow.h"
 #include "system/CThread.h"
@@ -72,6 +73,7 @@ private:
 
     void executeThread(void);
 
+    MenuMusic menuMusic;
     GuiSound *bgMusic;
     CVideo *video;
     MainWindow *mainWindow;

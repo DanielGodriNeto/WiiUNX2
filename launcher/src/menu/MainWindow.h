@@ -3,6 +3,9 @@
 #include "game/GameList.h"
 #include <gui/Gui.h>
 #include <memory>
+#include <thread>
+#include <atomic>
+#include <future>
 
 class MainWindow : public sigslot::has_slots<> {
 public:
@@ -14,7 +17,7 @@ public:
     void process();
     void updateEffects() {}
     void resume(FreeTypeGX *font);
-    struct ViewState { uint64_t titleId=0; int dock=0, row=0; };
+    struct ViewState { uint64_t titleId=0; int dock=0, row=0, sort=1; std::string query; };
     ViewState saveView() const;
     void restoreView(ViewState state) { restore=state; }
     void lockGUI() { guiMutex.lock(); }
@@ -49,6 +52,22 @@ private:
     void showMessage(const std::string &message, bool power = false);
     void drawImage(GuiImage &image, CVideo *v, float x, float y);
     void drawText(GuiText &text, CVideo *v, float x, float y);
+    void rebuildView();
+    void searchKey(int key);
+    void drawSearch(CVideo *video);
+    std::vector<size_t> visible;
+    Tile &selectedTile() { return tiles[visible[selected]]; }
+    const Tile &selectedTile() const { return tiles[visible[selected]]; }
+    struct IconRead { uint64_t id=0; std::vector<uint8_t> bytes; };
+    std::future<IconRead> iconRead;
+    std::thread loader;
+    std::atomic<bool> stopLoader{false}, loaderDone{false}, loaderFailed{false};
+    std::mutex pendingMutex;
+    std::vector<gameInfo> pending;
+    bool viewDirty=false, searchOpen=false;
+    int sortMode=1, keyboardIndex=0;
+    std::string query;
+    std::vector<std::unique_ptr<GuiText>> keyLabels;
     GameList gameList;
     bool loaded=false, listStarted=false, loadFailed=false;
     ViewState restore;
@@ -58,19 +77,22 @@ private:
     GuiText title, clockText, footer, label, message, brand, hint, accountHeading, profileName, accountHelp;
     std::string lastTitle, lastLabel;
     GuiImage accountPanel, accountCard, accountFocus;
+    GuiText libraryStatus, searchHeading, searchQuery, searchHelp, searchButton, sortButton;
+    GuiImage searchPanel, keyCard, keyFocus;
     std::vector<Account> accounts;
     bool actReady=false, accountsOpen=false;
     int accountIndex=0;
     uint8_t activeSlot=0;
     std::vector<GuiImageData *> assetData;
     std::vector<std::unique_ptr<GuiImage>> dock;
-    std::unique_ptr<GuiImage> profile, ring, network;
+    std::unique_ptr<GuiImage> profile, ring, network, tileMask, tileFocus, tileShadow, dockSurface;
     bool acReady=false, connected=false;
     int battery=-1;
     size_t selected = 0;
     int dockIndex = 0, focusRow = 0;
     float scroll = 0;
     bool modal = false, powerConfirm = false, launching = false;
+    uint64_t heartbeatTicks=0;
     unsigned frame = 0, launchFrame = 0, repeat[5] = {};
     uint32_t heldDirection[5] = {};
     int width, height;

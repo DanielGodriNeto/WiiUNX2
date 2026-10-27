@@ -17,3 +17,7 @@ Source evidence:
 - https://github.com/devkitPro/wut/blob/master/include/nn/acp/title.h — ACPGetTitleMetaXml's 64-byte buffer-alignment requirement.
 
 The account picker uses local ACT APIs. It does not implement network login/session management or promise Pretendo account-switch compatibility. The user must validate switching and returning from games on hardware.
+
+## Version 0.5
+
+The user reports no more crashes with 0.4. Version 0.5 adds CPU-only loading workers and an AX music voice while retaining render-thread GPU ownership. These changes need renewed hardware validation. The supplied SD log was inaccessible because E: was not mounted. No supplied plugin or setup module was modified.

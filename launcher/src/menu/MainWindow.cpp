@@ -1,6 +1,7 @@
 // WiiUNX2, GPL-3.0-or-later. Original menu implementation for launchiine.
 #include "MainWindow.h"
 #include "HomeGeometry.h"
+#include "Library.h"
 #include "game/Metadata.h"
 #include "fs/FSUtils.h"
 #include "utils/logger.h"
@@ -21,6 +22,7 @@
 
 static const char *dockNames[] = {"Friend List", "Internet Browser", "Download Management", "Nintendo eShop", "Mii Maker", "Data Management", "Controllers", "System Settings", "Power"};
 static const char *dockFiles[] = {"nxFriends.png", "nxBrowser.png", "nxDownloads.png", "nxShop.png", "nxMii.png", "nxData.png", "nxControllers.png", "nxSettings.png", "nxPower.png"};
+static const char *keys="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 static bool isMenu(uint64_t id) { return (id >> 32) == 0x00050010 && ((id & 0xffffff00) == 0x10040000 || (id & 0xffffff00) == 0x10040100 || (id & 0xffffff00) == 0x10040200); }
 
 MainWindow::MainWindow(int32_t w, int32_t h)
@@ -31,7 +33,7 @@ MainWindow::MainWindow(int32_t w, int32_t h)
    batteryFill(24,10,GX2Color{67,160,44,255}), batteryTip(3,8,GX2Color{70,70,70,255}),
    title("Loading software...",26,glm::vec4(.12f,.12f,.12f,1)),
    clockText("",23,glm::vec4(.1f,.1f,.1f,1)),
-   footer("+  Options     A  OK",22,glm::vec4(.12f,.12f,.12f,1)),
+   footer("+  Options     A  OK",19,glm::vec4(.12f,.12f,.12f,1)),
    label("",23,glm::vec4(.12f,.36f,.62f,1)),
    message("",26,glm::vec4(.12f,.12f,.12f,1)),
    brand("WiiUNX2",19,glm::vec4(.32f,.32f,.32f,1)),
@@ -41,7 +43,13 @@ MainWindow::MainWindow(int32_t w, int32_t h)
    accountHelp("L / R  More users       B  Back       A  Select",22,glm::vec4(.12f,.36f,.62f,1)),
    accountPanel(1120,420,GX2Color{250,250,250,255}),
    accountCard(148,164,GX2Color{239,239,239,255}),
-   accountFocus(156,172,GX2Color{35,197,218,255}),width(w),height(h) {
+   accountFocus(156,172,GX2Color{35,197,218,255}),libraryStatus("",18,glm::vec4(.4f,.4f,.4f,1)),
+   searchHeading("Find software",30,glm::vec4(.12f,.12f,.12f,1)),
+   searchQuery("",27,glm::vec4(.12f,.36f,.62f,1)),
+   searchHelp("D-pad: choose key   A: type   X: erase   +: done   B: close",20,glm::vec4(.3f,.3f,.3f,1)),
+   searchButton("Y  Search",19,glm::vec4(.12f,.12f,.12f,1)),sortButton("-  Sort",19,glm::vec4(.12f,.12f,.12f,1)),
+   searchPanel(1120,520,GX2Color{250,250,250,255}),
+   keyCard(84,54,GX2Color{235,235,235,255}),keyFocus(90,60,GX2Color{35,197,218,255}),width(w),height(h) {
     title.setMaxWidth(1070,GuiText::DOTTED);
     message.setMaxWidth(840,GuiText::WRAP);
     auto asset = [this](const char *name) {
@@ -52,26 +60,32 @@ MainWindow::MainWindow(int32_t w, int32_t h)
     for (auto name:dockFiles) dock.push_back(asset(name));
     profile=asset("nxProfile.png"); ring=asset("nxRing.png");
     network=asset("nxNetwork.png");
+    tileMask=asset("nxTileMask.png");tileFocus=asset("nxTileFocus.png");tileShadow=asset("nxTileShadow.png");dockSurface=asset("nxDock.png");
     acReady=NNResult_IsSuccess(ACInitialize());
-    gameList.titleAdded.connect(this,&MainWindow::titleChanged);
-    gameList.titleUpdated.connect(this,&MainWindow::titleChanged);
-    gameList.titleListChanged.connect(this,&MainWindow::listChanged);
+    for(int i=0;i<40;++i) {
+        std::string caption=i<36 ? std::string(1,keys[i]) : i==36 ? "Space":i==37 ? "Erase":i==38 ? "Clear":"Done";
+        keyLabels.push_back(std::make_unique<GuiText>(caption.c_str(),i<36?22:16,glm::vec4(.15f,.15f,.15f,1)));
+    }
+    searchQuery.setMaxWidth(950,GuiText::DOTTED);
     actReady=nn::act::Initialize().IsSuccess();
     refreshAccounts();
 }
 MainWindow::~MainWindow() {
+    stopLoader=true;
+    if(loader.joinable()) loader.join();
+    if(iconRead.valid()) iconRead.wait();
     accounts.clear();
     if(actReady) nn::act::Finalize();
     gameList.titleAdded.disconnect(this);
     gameList.titleUpdated.disconnect(this);
     gameList.titleListChanged.disconnect(this);
-    tiles.clear(); dock.clear(); profile.reset(); ring.reset(); network.reset();
+    tiles.clear(); dock.clear(); profile.reset(); ring.reset(); network.reset();tileMask.reset();tileFocus.reset();tileShadow.reset();dockSurface.reset();
     for(auto *data:assetData) Resources::RemoveImageData(data);
     if(acReady) ACFinalize();
 }
 void MainWindow::resume(FreeTypeGX *font) {
     launching=false;
-    for(auto *text:{&title,&clockText,&footer,&label,&message,&brand,&hint,&accountHeading,&profileName,&accountHelp}) text->setFont(font);
+    for(auto *text:{&title,&clockText,&footer,&label,&message,&brand,&hint,&accountHeading,&profileName,&accountHelp,&libraryStatus,&searchHeading,&searchQuery,&searchHelp,&searchButton,&sortButton}) text->setFont(font);
 }
 void MainWindow::listChanged(GameList *) {}
 void MainWindow::titleChanged(gameInfo *info) {
@@ -79,9 +93,10 @@ void MainWindow::titleChanged(gameInfo *info) {
     // Installed games and system applications remain available in the row.
     std::lock_guard<std::recursive_mutex> guard(tilesMutex);
     for(auto &t:tiles) if(t.id==info->titleId) {
-        t.name=info->name; return;
+        t.name=info->name; viewDirty=true; return;
     }
     tiles.push_back({info->titleId,info->appType,info->name,info->gamePath,nullptr,nullptr});
+    viewDirty=true;
 }
 void MainWindow::drawImage(GuiImage &image,CVideo *v,float x,float y) {
     image.setPosition(x-width/2.f,height/2.f-y); image.draw(v);
@@ -92,13 +107,33 @@ void MainWindow::drawText(GuiText &text,CVideo *v,float x,float y) {
 void MainWindow::process() {
     std::lock_guard<std::recursive_mutex> guard(tilesMutex);
     ++frame;
+    if(frame==1) heartbeatTicks=OSGetSystemTime();
     if(!listStarted && frame>=2) {
-        listStarted=true; loadFailed=gameList.load()<0;
-        for(size_t i=0;i<tiles.size();++i) if(tiles[i].id==restore.titleId) selected=i;
-        focusRow=restore.row; dockIndex=restore.dock;
-        scroll=nx::scrollTarget(selected);
+        listStarted=true;focusRow=restore.row;dockIndex=restore.dock;sortMode=restore.sort;query=restore.query;
+        // Worker touches only CPU metadata; GUI objects and textures stay on this thread.
+        loader=std::thread([this] {
+            auto began=OSGetSystemTime();
+            loaderFailed=gameList.load()<0;
+            for(int i=0;i<gameList.size() && !stopLoader;++i) {
+                gameList.loadNext();
+                std::lock_guard<std::mutex> guard(pendingMutex);
+                pending.push_back(*gameList.at(i));
+            }
+            DEBUG_FUNCTION_LINE("Metadata scan finished in %llu ms",(unsigned long long)OSTicksToMilliseconds(OSGetSystemTime()-began));
+            loaderDone=true;
+        });
     }
-    if(listStarted && !loaded && !launching) loaded=gameList.loadNext();
+    std::vector<gameInfo> incoming;
+    { std::lock_guard<std::mutex> guard(pendingMutex); incoming.swap(pending); }
+    for(auto &info:incoming) titleChanged(&info);
+    // Observe completion before draining again next frame; never discard a final queued record.
+    bool finished=loaderDone;
+    if(finished && !loaded) {
+        DEBUG_FUNCTION_LINE("Metadata worker completed: %u published titles",unsigned(tiles.size()));
+        viewDirty=true;
+    }
+    loaded=finished;loadFailed=loaderFailed;
+    if(viewDirty) rebuildView();
     if(launching && frame-launchFrame>600) { launching=false; showMessage("The launch did not complete. Try again or restart WiiUNX2."); }
     // Keep the selection near the second card, with the next card peeking at the edge.
     float target=nx::scrollTarget(selected);
@@ -108,6 +143,8 @@ void MainWindow::process() {
     if(frame%600==0) {
         size_t resident=0;for(const auto &tile:tiles) if(tile.image) ++resident;
         DEBUG_FUNCTION_LINE("Menu alive: titles=%u resident-icons=%u metadata-ready=%u",unsigned(tiles.size()),unsigned(resident),unsigned(loaded));
+        DEBUG_FUNCTION_LINE("Last 600 menu frames: %llu ms",(unsigned long long)OSTicksToMilliseconds(OSGetSystemTime()-heartbeatTicks));
+        heartbeatTicks=OSGetSystemTime();
     }
     if(frame%60==1) {
         BOOL online=FALSE;
@@ -115,7 +152,7 @@ void MainWindow::process() {
         OSCalendarTime now; OSTicksToCalendarTime(OSGetTime(),&now);
         clockText.setTextf("%d:%02d %s",now.tm_hour%12 ? now.tm_hour%12 : 12,now.tm_min,now.tm_hour>=12 ? "PM":"AM");
     }
-    std::string currentTitle=tiles.empty() ? (loadFailed ? "Software list unavailable" : loaded ? "No installed software found":"Loading software...") : tiles[selected].name;
+    std::string currentTitle=visible.empty() ? (!query.empty() ? "No matching software" : loadFailed ? "Software list unavailable" : loaded ? "No installed software found":"Loading software...") : selectedTile().name;
     if(currentTitle!=lastTitle) { title.setText(currentTitle.c_str());lastTitle=currentTitle; }
     std::string currentLabel=focusRow==1 ? dockNames[dockIndex]:"";
     if(currentLabel!=lastLabel) { label.setText(currentLabel.c_str());lastLabel=currentLabel; }
@@ -141,23 +178,29 @@ void MainWindow::draw(CVideo *v) {
         drawImage(batteryFill,v,1203+12*fraction,76);
     }
     if(focusRow==0) drawText(title,v,640,166);
-    size_t count=std::max(size_t(5),tiles.size());
+    size_t count=std::max(size_t(5),visible.size());
     for(size_t i=0;i<count;++i) {
         float x=232+i*272.f-scroll;
         if(x < -140 || x > 1420) continue;
-        if(i==selected && focusRow==0 && !tiles.empty()) drawImage(focus,v,x,330);
+        drawImage(*tileShadow,v,x,330);
+        if(i==selected && focusRow==0 && !visible.empty()) drawImage(*tileFocus,v,x,330);
         drawImage(blank,v,x,330);
-        if(i<tiles.size() && tiles[i].image) drawImage(*tiles[i].image,v,x,330);
+        if(i<visible.size() && tiles[visible[i]].image) drawImage(*tiles[visible[i]].image,v,x,330);
+        drawImage(*tileMask,v,x,330);
     }
+    drawImage(*dockSurface,v,614,560);
     for(int i=0;i<9;++i) {
         float x=270+i*86;
         if(focusRow==1 && i==dockIndex) drawImage(*ring,v,x,560);
         drawImage(*dock[i],v,x,560);
     }
     drawText(label,v,640,626);
-    drawText(footer,v,1080,683);
+    drawText(footer,v,1090,683);
+    drawText(searchButton,v,800,683);drawText(sortButton,v,920,683);
+    drawText(libraryStatus,v,640,487);
     drawText(brand,v,95,683);
     if(accountsOpen) drawAccounts(v);
+    if(searchOpen) drawSearch(v);
     if(modal) {
         drawImage(modalShade,v,640,360); drawImage(modalPanel,v,640,360);
         drawText(message,v,640,335);
@@ -169,8 +212,9 @@ void MainWindow::showMessage(const std::string &text,bool power) {
     hint.setText(power ? "B  Cancel          A  Power off":"B  Back          A  OK");
 }
 void MainWindow::move(int delta) {
+    restore.titleId=0;
     if(focusRow==1) dockIndex=nx::moveSelection(dockIndex,delta,9);
-    else if(!tiles.empty()) selected=nx::moveSelection(selected,delta,tiles.size());
+    else if(!visible.empty()) selected=nx::moveSelection(selected,delta,visible.size());
 }
 void MainWindow::update(GuiController *c) {
     using T=GuiTrigger;
@@ -183,6 +227,20 @@ void MainWindow::update(GuiController *c) {
         if(pressed&T::BUTTON_A) { if(powerConfirm) OSShutdown(); modal=false; }
         return;
     }
+    if(searchOpen) {
+        if(pressed&(T::BUTTON_B|T::BUTTON_PLUS)) { searchOpen=false; return; }
+        if(pressed&T::BUTTON_X) {searchKey(37);return;}
+        if(pressed&(T::BUTTON_LEFT|T::STICK_L_LEFT)) keyboardIndex=nx::keyMove(keyboardIndex,-1,0);
+        if(pressed&(T::BUTTON_RIGHT|T::STICK_L_RIGHT)) keyboardIndex=nx::keyMove(keyboardIndex,1,0);
+        if(pressed&(T::BUTTON_UP|T::STICK_L_UP)) keyboardIndex=nx::keyMove(keyboardIndex,0,-1);
+        if(pressed&(T::BUTTON_DOWN|T::STICK_L_DOWN)) keyboardIndex=nx::keyMove(keyboardIndex,0,1);
+        bool click=(c->chanIdx==0 && c->data.touched && !c->lastData.touched) || (c->chanIdx!=0 && c->data.validPointer && (pressed&T::BUTTON_A));
+        if(click) {int key=nx::keyHit(c->data.x+640,360-c->data.y);if(key>=0) {keyboardIndex=key;searchKey(key);}}
+        else if(pressed&T::BUTTON_A) searchKey(keyboardIndex);
+        return;
+    }
+    if(!accountsOpen && (pressed&T::BUTTON_Y)) {searchOpen=true;searchQuery.setText(query.empty()?"Type a title...":query.c_str());return;}
+    if(!accountsOpen && (pressed&T::BUTTON_MINUS)) {sortMode=(sortMode+1)%3;rebuildView();return;}
     if(accountsOpen) {
         if(pressed&T::BUTTON_B) { accountsOpen=false; return; }
         if(pressed&(T::BUTTON_LEFT|T::STICK_L_LEFT)) accountIndex=nx::moveSelection(accountIndex,-1,accounts.size());
@@ -204,7 +262,7 @@ void MainWindow::update(GuiController *c) {
     if(touch || pointer) {
         float x=c->data.x+640,y=360-c->data.y;
         if(y>=202 && y<=458) {
-            int i=nx::hitTile(x,y,scroll,tiles.size());
+            int i=nx::hitTile(x,y,scroll,visible.size());
             if(i>=0) {
                 if(focusRow==0 && selected==size_t(i)) activate();
                 else { selected=i; focusRow=0; }
@@ -215,7 +273,9 @@ void MainWindow::update(GuiController *c) {
                 if(focusRow==1 && dockIndex==i) activate();
                 else { dockIndex=i; focusRow=1; }
             }
-        } else if(x>=35 && x<125 && y>=30 && y<125) openAccounts();
+        } else if(y>=658 && x>=730 && x<865) {searchOpen=true;searchQuery.setText(query.empty()?"Type a title...":query.c_str());}
+        else if(y>=658 && x>=865 && x<975) {sortMode=(sortMode+1)%3;rebuildView();}
+        else if(x>=35 && x<125 && y>=30 && y<125) openAccounts();
         return;
     }
     uint32_t directions=c->data.buttons_h & (T::BUTTON_LEFT|T::BUTTON_RIGHT|T::STICK_L_LEFT|T::STICK_L_RIGHT);
@@ -226,20 +286,20 @@ void MainWindow::update(GuiController *c) {
     }
     if(pressed & (T::BUTTON_DOWN|T::STICK_L_DOWN)) focusRow=focusRow==2 ? 0:1;
     if(pressed & (T::BUTTON_UP|T::STICK_L_UP)) focusRow=focusRow==1 ? 0:2;
-    if(pressed&T::BUTTON_B) focusRow=0;
+    if(pressed&T::BUTTON_B) {focusRow=0;if(!query.empty()){query.clear();rebuildView();}}
     if(pressed&T::BUTTON_L) move(-4);
     if(pressed&T::BUTTON_R) move(4);
     if(pressed&T::BUTTON_PLUS) {
-        if(focusRow==0 && !tiles.empty()) {
-            char id[32]; snprintf(id,sizeof(id),"%016llX",(unsigned long long)tiles[selected].id);
-            showMessage(tiles[selected].name+"\n\nTitle ID: "+id+"\n"+tiles[selected].path);
-        } else showMessage("WiiUNX2 0.4 experimental\n\nD-pad / stick: select   A: open   B: back\nL / R: skip four titles\nTouch once to select, again to open");
+        if(focusRow==0 && !visible.empty()) {
+            char id[32]; snprintf(id,sizeof(id),"%016llX",(unsigned long long)selectedTile().id);
+            showMessage(selectedTile().name+"\n\nTitle ID: "+id+"\n"+selectedTile().path);
+        } else showMessage("WiiUNX2 0.5 experimental\n\nD-pad / stick: select   A: open   B: back\nL / R: skip four titles\nTouch once to select, again to open");
     }
     if(pressed&T::BUTTON_A) activate();
 }
 void MainWindow::activate() {
     if(focusRow==2) { openAccounts(); return; }
-    if(focusRow==0) { if(!tiles.empty()) launch(tiles[selected].id); return; }
+    if(focusRow==0) { if(!visible.empty()) launch(selectedTile().id); return; }
     switch(dockIndex) {
     case 4: launch(_SYSGetSystemApplicationTitleId(SYSTEM_APP_ID_MII_MAKER)); return;
     case 5: { SysAppSettingsArgs args{}; args.jumpTo=SYS_SETTINGS_JUMP_TO_DATA_MANAGEMENT; _SYSLaunchSettings(&args); return; }
@@ -278,33 +338,46 @@ void MainWindow::launch(uint64_t id) {
 }
 
 MainWindow::ViewState MainWindow::saveView() const {
-    return {tiles.empty() ? 0:tiles[selected].id,dockIndex,focusRow};
+    return {visible.empty() ? 0:selectedTile().id,dockIndex,focusRow,sortMode,query};
 }
 void MainWindow::loadVisibleIcons() {
-    bool decoded=false;
-    for(size_t i=0;i<tiles.size();++i) {
-        auto &tile=tiles[i];float x=232+i*272.f-scroll;
-        if(x < -140 || x > 1420) {
-            // Application waits for GX2 completion before process() reaches this eviction.
-            tile.image.reset();tile.data.reset();tile.attempted=false;
-            continue;
-        }
-        if(decoded || tile.attempted || tile.path.empty()) continue;
-        tile.attempted=true;decoded=true;
-        uint8_t *bytes=nullptr;uint32_t size=0;
-        int result=FSUtils::LoadFileToMem(("fs:"+tile.path+"/meta/iconTex.tga").c_str(),&bytes,&size,1024*1024);
-        if(result<=0) {DEBUG_FUNCTION_LINE("Icon unavailable %016llX: %d",(unsigned long long)tile.id,result);continue;}
-        // Validate TGA dimensions and uncompressed payload before decoding.
-        if(nx::validIconTga(bytes,size)) {
-            auto data=std::make_unique<GuiImageData>(bytes,size,GX2_TEX_CLAMP_MODE_CLAMP);
-            if(data->getTexture() && data->getSampler() && data->getWidth()>0 && data->getHeight()>0) {
-                tile.data=std::move(data);
-                tile.image=std::make_unique<GuiImage>(tile.data.get());
-                tile.image->setScaleX(256.f/tile.data->getWidth());
-                tile.image->setScaleY(256.f/tile.data->getHeight());
+    std::vector<bool> needed(tiles.size(),false);
+    for(size_t pos=0;pos<visible.size();++pos) {
+        float x=232+pos*272.f-scroll;
+        if(x>=-140 && x<=1420) needed[visible[pos]]=true;
+    }
+    for(size_t i=0;i<tiles.size();++i) if(!needed[i]) {
+        tiles[i].image.reset();tiles[i].data.reset();tiles[i].attempted=false;
+    }
+    // File I/O and validation happen off-thread; only the renderer imports a texture.
+    if(iconRead.valid() && iconRead.wait_for(std::chrono::seconds(0))==std::future_status::ready) {
+        auto result=iconRead.get();
+        for(size_t i=0;i<tiles.size();++i) if(tiles[i].id==result.id && needed[i]) {
+            auto &tile=tiles[i];tile.attempted=true;
+            if(!result.bytes.empty()) {
+                auto data=std::make_unique<GuiImageData>(result.bytes.data(),result.bytes.size(),GX2_TEX_CLAMP_MODE_CLAMP);
+                if(data->getTexture() && data->getSampler() && data->getWidth()>0 && data->getHeight()>0) {
+                    tile.data=std::move(data);tile.image=std::make_unique<GuiImage>(tile.data.get());
+                    tile.image->setScaleX(256.f/tile.data->getWidth());tile.image->setScaleY(256.f/tile.data->getHeight());
+                }
             }
+            break;
         }
-        free(bytes);
+    }
+    if(iconRead.valid()) return;
+    for(size_t pos=0;pos<visible.size();++pos) {
+        auto i=visible[pos];auto &tile=tiles[i];
+        if(!needed[i] || tile.attempted || tile.path.empty()) continue;
+        tile.attempted=true;
+        auto path="fs:"+tile.path+"/meta/iconTex.tga";auto id=tile.id;
+        iconRead=std::async(std::launch::async,[path,id] {
+            IconRead result;result.id=id;
+            uint8_t *bytes=nullptr;uint32_t size=0;
+            if(FSUtils::LoadFileToMem(path.c_str(),&bytes,&size,1024*1024)>0 && nx::validIconTga(bytes,size))
+                result.bytes.assign(bytes,bytes+size);
+            free(bytes);return result;
+        });
+        break;
     }
 }
 void MainWindow::refreshAccounts() {
@@ -371,4 +444,35 @@ void MainWindow::drawAccounts(CVideo *v) {
     }
     // These strings have stable storage across both screen draws.
     drawText(accountHelp,v,640,514);
+}
+
+void MainWindow::rebuildView() {
+    uint64_t id=restore.titleId ? restore.titleId:visible.empty()?0:selectedTile().id;
+    visible.clear();
+    for(size_t i=0;i<tiles.size();++i) if(nx::matches(tiles[i].name,query)) visible.push_back(i);
+    if(sortMode) std::stable_sort(visible.begin(),visible.end(),[this](size_t a,size_t b) {
+        return nx::titleBefore(tiles[a].name,tiles[a].id,tiles[b].name,tiles[b].id,sortMode);
+    });
+    selected=0;
+    for(size_t i=0;i<visible.size();++i) if(tiles[visible[i]].id==id) {selected=i;restore.titleId=0;}
+    scroll=nx::scrollTarget(selected);viewDirty=false;
+    libraryStatus.setTextf("%u software   /   %s%s",unsigned(visible.size()),nx::sortName(sortMode),!loaded ? "   /   Loading...":query.empty()?"":"   /   Filter active (B: clear)");
+}
+void MainWindow::searchKey(int key) {
+    if(key<36 && query.size()<48) query+=keys[key];
+    else if(key==36 && query.size()<48) query+=' ';
+    else if(key==37 && !query.empty()) query.pop_back();
+    else if(key==38) query.clear();
+    else if(key==39) searchOpen=false;
+    searchQuery.setText(query.empty()?"Type a title...":query.c_str());rebuildView();
+}
+void MainWindow::drawSearch(CVideo *v) {
+    drawImage(modalShade,v,640,360);drawImage(searchPanel,v,640,360);
+    drawText(searchHeading,v,640,160);drawText(searchQuery,v,640,238);
+    for(int i=0;i<40;++i) {
+        float x=222+(i%10)*92,y=327+(i/10)*64;
+        if(i==keyboardIndex) drawImage(keyFocus,v,x,y);
+        drawImage(keyCard,v,x,y);drawText(*keyLabels[i],v,x,y);
+    }
+    drawText(searchHelp,v,640,580);
 }

@@ -65,3 +65,71 @@ Asset 'nxNetwork.png' 32 {
     $g.DrawArc($p,2,6,28,28,225,90);$g.DrawArc($p,7,11,18,18,225,90);$g.DrawArc($p,12,16,8,8,225,90)
     $b=[Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#333333'));$g.FillEllipse($b,14,24,4,4);$b.Dispose();$p.Dispose()
 }
+# WiiUNX2 0.5 rounded surfaces and refined glyphs.
+function RoundedPath($x,$y,$w,$h,$r) {
+    $p=[Drawing.Drawing2D.GraphicsPath]::new()
+    $d=$r*2
+    $p.AddArc($x,$y,$d,$d,180,90);$p.AddArc(($x+$w-$d),$y,$d,$d,270,90)
+    $p.AddArc(($x+$w-$d),($y+$h-$d),$d,$d,0,90);$p.AddArc($x,($y+$h-$d),$d,$d,90,90)
+    $p.CloseFigure();return $p
+}
+Asset 'nxTileMask.png' 256 {
+    param($g)
+    $outer=[Drawing.Drawing2D.GraphicsPath]::new();$outer.AddRectangle([Drawing.Rectangle]::new(0,0,256,256))
+    $inner=RoundedPath 0 0 256 256 10;$outer.AddPath($inner,$false)
+    $b=[Drawing.SolidBrush]::new([Drawing.Color]::FromArgb(233,233,233));$g.FillPath($b,$outer)
+    $b.Dispose();$inner.Dispose();$outer.Dispose()
+}
+Asset 'nxTileFocus.png' 272 {
+    param($g)
+    $path=RoundedPath 3 3 266 266 15
+    $brush=[Drawing.Drawing2D.LinearGradientBrush]::new([Drawing.Point]::new(0,0),[Drawing.Point]::new(272,272),[Drawing.ColorTranslator]::FromHtml('#39D6D1'),[Drawing.ColorTranslator]::FromHtml('#839AF0'))
+    $pen=[Drawing.Pen]::new($brush,4);$g.DrawPath($pen,$path);$pen.Dispose();$brush.Dispose();$path.Dispose()
+}
+Asset 'nxTileShadow.png' 280 {
+    param($g)
+    for($i=0;$i -lt 5;$i++) {
+        $p=RoundedPath (8-$i) (10-$i) (264+$i*2) (264+$i*2) (12+$i)
+        $b=[Drawing.SolidBrush]::new([Drawing.Color]::FromArgb(5,0,0,0));$g.FillPath($b,$p);$b.Dispose();$p.Dispose()
+    }
+}
+Asset 'nxControllers.png' 64 {
+    param($g)
+    $g.TranslateTransform(32,32);$g.RotateTransform(38);$g.TranslateTransform(-32,-32)
+    $path=RoundedPath 22 10 20 44 8;$p=Pen '#62676B' 2.5;$g.DrawPath($p,$path)
+    $g.DrawEllipse($p,28,17,8,8);$g.DrawLine($p,27,35,37,35);$g.DrawLine($p,32,30,32,40)
+    $p.Dispose();$path.Dispose()
+}
+Asset 'nxSettings.png' 64 {
+    param($g)
+    $points=[Drawing.PointF[]]::new(48)
+    for($i=0;$i -lt 48;$i++) {
+        $a=$i*[Math]::PI/24;$r=if(($i%6)-in @(1,2,3,4)){19}else{14.5}
+        $points[$i]=[Drawing.PointF]::new([single](32+$r*[Math]::Cos($a)),[single](32+$r*[Math]::Sin($a)))
+    }
+    $p=Pen '#62676B' 2.2;$g.DrawPolygon($p,$points);$g.DrawEllipse($p,25,25,14,14);$p.Dispose()
+}
+Asset 'nxShop.png' 64 {
+    param($g)
+    $p=Pen '#EC6846' 2.6;$path=RoundedPath 16 22 32 28 2;$g.DrawPath($p,$path)
+    $g.DrawArc($p,24,12,16,20,180,180);$g.DrawLine($p,24,22,24,27);$g.DrawLine($p,40,22,40,27)
+    $path.Dispose();$p.Dispose()
+}
+# A soft white dock surface, matching the light reference while retaining Wii U actions.
+$bmp=[Drawing.Bitmap]::new(830,100);$g=[Drawing.Graphics]::FromImage($bmp)
+$g.SmoothingMode=[Drawing.Drawing2D.SmoothingMode]::AntiAlias;$g.Clear([Drawing.Color]::Transparent)
+$path=RoundedPath 2 2 826 96 48
+$b=[Drawing.Drawing2D.LinearGradientBrush]::new([Drawing.Point]::new(0,0),[Drawing.Point]::new(0,100),[Drawing.Color]::FromArgb(55,255,255,255),[Drawing.Color]::FromArgb(170,255,255,255))
+$g.FillPath($b,$path);$bmp.Save((Join-Path $target 'nxDock.png'),[Drawing.Imaging.ImageFormat]::Png)
+$path.Dispose();$b.Dispose();$g.Dispose();$bmp.Dispose()
+# Pastel selection ring; a consistent thin stroke with blue/pink highlights.
+Asset 'nxRing.png' 84 {
+    param($g)
+    $stops=@(@(89,211,231),@(154,128,239),@(244,153,195),@(89,211,231))
+    for($i=0;$i -lt 360;$i+=2) {
+        $segment=[Math]::Min(2,[int][Math]::Floor($i/120));$t=($i%120)/120
+        $a=$stops[$segment];$b=$stops[$segment+1]
+        $color=[Drawing.Color]::FromArgb(255,[int]($a[0]+($b[0]-$a[0])*$t),[int]($a[1]+($b[1]-$a[1])*$t),[int]($a[2]+($b[2]-$a[2])*$t))
+        $p=[Drawing.Pen]::new($color,2.5);$g.DrawArc($p,4,4,76,76,$i,3);$p.Dispose()
+    }
+}
