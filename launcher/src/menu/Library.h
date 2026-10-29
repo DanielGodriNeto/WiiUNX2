@@ -30,7 +30,7 @@ inline bool titleBefore(const std::string &a,uint64_t aId,const std::string &b,u
     if(left==right) return aId<bId;
     return mode==1 ? left<right:left>right;
 }
-inline const char *sortName(int mode) {return mode==1 ? "Name A-Z" : mode==2 ? "Name Z-A" : "Installed order";}
+inline const char *sortName(int mode) {return mode==3 ? "Recently played" : mode==1 ? "Name A-Z" : mode==2 ? "Name Z-A" : "Installed order";}
 inline int keyHit(float x,float y) {
     if(x<180||y<300) return -1;
     int col=int((x-180)/92),row=int((y-300)/64);

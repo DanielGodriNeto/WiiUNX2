@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cmath>
+extern "C" int32_t ACPCheckTitleLaunchByTitleListTypeEx(MCPTitleListType*,uint32_t);
 
 static const char *dockNames[] = {"Friend List", "Internet Browser", "Download Management", "Nintendo eShop", "Mii Maker", "Data Management", "Controllers", "System Settings", "Power"};
 static const char *dockFiles[] = {"nxFriends.png", "nxBrowser.png", "nxDownloads.png", "nxShop.png", "nxMii.png", "nxData.png", "nxControllers.png", "nxSettings.png", "nxPower.png"};
@@ -119,6 +120,7 @@ void MainWindow::resume(FreeTypeGX *font) {
 void MainWindow::listChanged(GameList *) {}
 void MainWindow::titleChanged(gameInfo *info) {
     if(info && info->titleId==discTileId) {
+        discRecentId=info->launchId;
         auto it=std::find_if(tiles.begin(),tiles.end(),[](const auto &t){return t.id==discTileId;});
         if(it!=tiles.end() && (info->name.empty() || it->path!=info->gamePath)) {tiles.erase(it);viewDirty=true;}
         if(info->name.empty()) return;
@@ -161,7 +163,7 @@ void MainWindow::process() {
                 MCPTitleListType disc{};
                 uint64_t current=readDisc(disc)?disc.titleId:0;
                 if(current!=previous) {
-                    gameInfo update{};update.titleId=discTileId;update.appType=MCP_APP_TYPE_GAME;
+                    gameInfo update{};update.titleId=discTileId;update.appType=MCP_APP_TYPE_GAME;update.launchId=current;
                     if(current) {
                         update.name="Wii U Disc";update.gamePath=nx::bounded(disc.path,sizeof(disc.path));
                         uint8_t *xml=nullptr;uint32_t size=0;
@@ -190,7 +192,7 @@ void MainWindow::process() {
     if(viewDirty) rebuildView();
     if(launching && frame-launchFrame>600) { launching=false; showMessage("The launch did not complete. Try again or restart WiiUNX2."); }
     // Keep the selection near the second card, with the next card peeking at the edge.
-    float target=nx::scrollTarget(selected);
+    float target=dragging?scroll:nx::scrollTarget(selected);
     scroll+=(target-scroll)*.22f;
     if(std::fabs(target-scroll)<.1f) scroll=target;
     loadVisibleIcons();
@@ -306,7 +308,7 @@ void MainWindow::handleInput(GuiController *c) {
         return;
     }
     if(!accountsOpen && (pressed&T::BUTTON_Y)) {searchOpen=true;requestSound(MenuSound::Click);searchQuery.setText(query.empty()?"Type a title...":query.c_str());return;}
-    if(!accountsOpen && (pressed&T::BUTTON_MINUS)) {sortMode=(sortMode+1)%3;requestSound(MenuSound::Click);rebuildView();return;}
+    if(!accountsOpen && (pressed&T::BUTTON_MINUS)) {sortMode=(sortMode+1)%4;requestSound(MenuSound::Click);rebuildView();return;}
     if(accountsOpen) {
         if(pressed&T::BUTTON_B) { accountsOpen=false;requestSound(MenuSound::Back); return; }
         if(pressed&(T::BUTTON_LEFT|T::STICK_L_LEFT)) accountIndex=nx::moveSelection(accountIndex,-1,accounts.size());
@@ -324,6 +326,30 @@ void MainWindow::handleInput(GuiController *c) {
     }
     if(pressed&T::BUTTON_X) { openAccounts(); return; }
     // Touch and Wii Remote pointing use the same centered 1280x720 coordinates.
+    if(c->chanIdx==0) {
+        float x=c->data.x+640,y=360-c->data.y;
+        if(c->data.touched && !c->lastData.touched && y>=202 && y<=458) {
+            dragging=true;dragMoved=false;dragStartX=x;dragStartScroll=scroll;return;
+        }
+        if(dragging && c->data.touched) {
+            float distance=x-dragStartX;
+            if(std::fabs(distance)>14) dragMoved=true;
+            if(dragMoved) {
+                scroll=std::max(0.f,std::min(nx::scrollTarget(visible.empty()?0:visible.size()-1),dragStartScroll-distance));
+                if(!visible.empty()) selected=nx::moveSelection(0,int(std::lround(scroll/272.f))+2,visible.size());
+                focusRow=0;
+            }
+            return;
+        }
+        if(dragging && !c->data.touched) {
+            dragging=false;
+            if(!dragMoved) {
+                int i=nx::hitTile(dragStartX,330,dragStartScroll,visible.size());
+                if(i>=0) {if(focusRow==0 && selected==size_t(i)) activate();else {selected=i;focusRow=0;}}
+            }
+            return;
+        }
+    }
     bool touch=c->chanIdx==0 && c->data.touched && !c->lastData.touched;
     bool pointer=c->chanIdx!=0 && c->data.validPointer && (pressed&T::BUTTON_A);
     if(touch || pointer) {
@@ -378,21 +404,18 @@ void MainWindow::launch(uint64_t id) {
     if(id==discTileId) {
         MCPTitleListType disc{};
         if(!readDisc(disc)) {showMessage("Insert a readable Wii U game disc and try again.");return;}
-        ACPAssignTitlePatch(&disc);launching=true;launchFrame=frame;
+        ACPAssignTitlePatch(&disc);markPlayed(disc.titleId);launching=true;launchFrame=frame;
         _SYSLaunchTitleByPathFromLauncher(disc.path,0);return;
     }
     if((id>>32)==0x0005000f) {
         // Run the plugin's preparation hook before launching its /custom/ path.
-        OSDynLoad_Module module{};void *symbol=nullptr;
-        if(OSDynLoad_Acquire("nn_acp.rpl",&module)!=OS_DYNLOAD_OK) {showMessage("Aroma homebrew launch service is unavailable.");return;}
-        OSDynLoad_FindExport(module,OS_DYNLOAD_EXPORT_FUNC,"ACPCheckTitleLaunchByTitleListTypeEx",&symbol);
         MCPTitleListType homebrew{};homebrew.titleId=id;
         std::snprintf(homebrew.path,sizeof(homebrew.path),"/custom/%016llX",(unsigned long long)id);
-        auto check=reinterpret_cast<int32_t(*)(MCPTitleListType*,uint32_t)>(symbol);
-        int result=check?check(&homebrew,0):-1;
-        OSDynLoad_Release(module);
+        // Use the statically imported function so WUPS can replace this call.
+        int result=ACPCheckTitleLaunchByTitleListTypeEx(&homebrew,0);
+        DEBUG_FUNCTION_LINE("Aroma prepare %016llX result %d",(unsigned long long)id,result);
         if(result<0) {showMessage("Homebrew could not prepare. Enable Aroma's Homebrew on Menu plugin.");return;}
-        launching=true;launchFrame=frame;
+        markPlayed(id);launching=true;launchFrame=frame;
         _SYSLaunchTitleByPathFromLauncher(homebrew.path,0);return;
     }
     DEBUG_FUNCTION_LINE("Launch requested %016llX",(unsigned long long)id);
@@ -415,6 +438,7 @@ void MainWindow::launch(uint64_t id) {
     case MCP_APP_TYPE_MIIVERSE: result=_SYSSwitchTo(SYSAPP_PFID_MIIVERSE); break;
     default:
         ACPAssignTitlePatch(&info);
+        markPlayed(id);
         launching=true;
         launchFrame=frame;
         SYSLaunchTitle(id);
@@ -425,7 +449,14 @@ void MainWindow::launch(uint64_t id) {
 }
 
 MainWindow::ViewState MainWindow::saveView() const {
-    return {visible.empty() ? 0:selectedTile().id,dockIndex,focusRow,sortMode,query};
+    return {0,0,0,sortMode,{}};
+}
+void MainWindow::markPlayed(uint64_t id) {
+    recent.erase(std::remove(recent.begin(),recent.end(),id),recent.end());
+    recent.insert(recent.begin(),id);if(recent.size()>512) recent.resize(512);
+    FILE *file=std::fopen("fs:/vol/external01/wiiu/wiiunx2-recent.txt","w");
+    if(file) {for(auto title:recent) std::fprintf(file,"%016llX\n",(unsigned long long)title);std::fclose(file);}
+    viewDirty=true;
 }
 void MainWindow::loadVisibleIcons() {
     std::vector<bool> needed(tiles.size(),false);
@@ -537,14 +568,25 @@ void MainWindow::drawAccounts(CVideo *v) {
 }
 
 void MainWindow::rebuildView() {
+    if(!recentLoaded) {
+        recentLoaded=true;
+        FILE *file=std::fopen("fs:/vol/external01/wiiu/wiiunx2-recent.txt","r");
+        if(file) {unsigned long long id;while(recent.size()<512 && std::fscanf(file,"%llx",&id)==1) recent.push_back(id);std::fclose(file);}
+    }
     uint64_t id=restore.titleId ? restore.titleId:visible.empty()?0:selectedTile().id;
     visible.clear();
     for(size_t i=0;i<tiles.size();++i) if(nx::matches(tiles[i].name,query)) visible.push_back(i);
     if(sortMode) std::stable_sort(visible.begin(),visible.end(),[this](size_t a,size_t b) {
+        if(sortMode==3) {
+            auto left=std::find(recent.begin(),recent.end(),tiles[a].id==discTileId?discRecentId:tiles[a].id);
+            auto right=std::find(recent.begin(),recent.end(),tiles[b].id==discTileId?discRecentId:tiles[b].id);
+            if(left!=right) return left<right;
+            return nx::titleBefore(tiles[a].name,tiles[a].id,tiles[b].name,tiles[b].id,1);
+        }
         return nx::titleBefore(tiles[a].name,tiles[a].id,tiles[b].name,tiles[b].id,sortMode);
     });
     selected=0;
-    for(size_t i=0;i<visible.size();++i) if(tiles[visible[i]].id==id) {selected=i;restore.titleId=0;}
+    if(loaded) for(size_t i=0;i<visible.size();++i) if(tiles[visible[i]].id==id) {selected=i;restore.titleId=0;}
     scroll=nx::scrollTarget(selected);viewDirty=false;
     libraryStatus.setTextf("%u software   /   %s%s",unsigned(visible.size()),nx::sortName(sortMode),!loaded ? "   /   Loading...":query.empty()?"":"   /   Filter active (B: clear)");
 }

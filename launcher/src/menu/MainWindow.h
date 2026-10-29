@@ -18,7 +18,7 @@ public:
     void process();
     void updateEffects() {}
     void resume(FreeTypeGX *font);
-    struct ViewState { uint64_t titleId=0; int dock=0, row=0, sort=1; std::string query; };
+    struct ViewState { uint64_t titleId=0; int dock=0, row=0, sort=3; std::string query; };
     ViewState saveView() const;
     void restoreView(ViewState state) { restore=state; }
     void lockGUI() { guiMutex.lock(); }
@@ -61,6 +61,11 @@ private:
     void showOptions();
     void activate();
     void launch(uint64_t id);
+    void markPlayed(uint64_t id);
+    std::vector<uint64_t> recent;
+    uint64_t discRecentId=0;
+    bool recentLoaded=false, dragging=false, dragMoved=false;
+    float dragStartX=0, dragStartScroll=0;
     void move(int delta);
     void showMessage(const std::string &message, bool power = false);
     void drawImage(GuiImage &image, CVideo *v, float x, float y);
@@ -78,7 +83,7 @@ private:
     std::mutex pendingMutex;
     std::vector<gameInfo> pending;
     bool viewDirty=false, searchOpen=false;
-    int sortMode=1, keyboardIndex=0;
+    int sortMode=3, keyboardIndex=0;
     std::string query;
     std::vector<std::unique_ptr<GuiText>> keyLabels;
     GameList gameList;
