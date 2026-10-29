@@ -1,0 +1,26 @@
+// WiiUNX2 GPL-3.0-or-later. No console, SD card or network access.
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {spawnSync} from 'node:child_process';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
+const base=path.join(root,'.test-output');fs.mkdirSync(base,{recursive:true});
+const output=fs.mkdtempSync(path.join(base,'host-'));
+const compiler=process.env.CXX||(process.platform==='win32'&&fs.existsSync('C:/msys64/ucrt64/bin/g++.exe')?'C:/msys64/ucrt64/bin/g++.exe':'g++');
+function run(command,args) {
+  const result=spawnSync(command,args,{cwd:root,stdio:'inherit',shell:false});
+  if(result.error) throw result.error;
+  if(result.status!==0) throw Error(`${path.basename(command)} failed (${result.status??result.signal})`);
+}
+for(const name of ['navigation','library','stability','rounded','loading-selection','homebrew-policy','history-save']) {
+  const executable=path.join(output,name+(process.platform==='win32'?'.exe':''));
+  run(compiler,['-std=c++17','-Wall','-Wextra','-I',path.join(root,'launcher/src'),path.join(root,`launcher/tests/${name}.cpp`),'-o',executable]);
+  let args=[];
+  if(name==='history-save') {
+    const fixture=path.join(output,'history.txt');fs.mkdirSync(fixture+'-directory');
+    args=[fixture.replaceAll('\\','/')];
+  }
+  run(executable,args);console.log(`PASS ${name}`);
+}
+run(process.execPath,['--test','launcher/tests/sounds.mjs']);
+console.log('All host tests passed. Hardware behavior is not covered.');

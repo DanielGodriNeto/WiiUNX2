@@ -18,3 +18,4 @@ launcher/data/sounds/ui*.bin
 *.zip
 *.pack
 *.bps
+.test-output/

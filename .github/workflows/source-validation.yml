@@ -1,0 +1,19 @@
+name: Source validation
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  host:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Check source publication exclusions
+        run: node launcher/tools/Check-Public-Source.mjs
+      - name: Run host regression tests
+        run: node launcher/tools/Test-Host.mjs
+      - name: Verify source archive creation
+        run: node launcher/tools/Package-Public-Source.mjs
