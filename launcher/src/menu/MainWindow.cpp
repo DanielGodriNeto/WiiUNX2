@@ -16,6 +16,7 @@
 #include <nn/ac.h>
 #include <coreinit/time.h>
 #include <coreinit/launch.h>
+#include <coreinit/dynload.h>
 #include <nn/acp/title.h>
 #include <sysapp/launch.h>
 #include <algorithm>
@@ -26,6 +27,16 @@ static const char *dockNames[] = {"Friend List", "Internet Browser", "Download M
 static const char *dockFiles[] = {"nxFriends.png", "nxBrowser.png", "nxDownloads.png", "nxShop.png", "nxMii.png", "nxData.png", "nxControllers.png", "nxSettings.png", "nxPower.png"};
 static const char *keys="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 static bool isMenu(uint64_t id) { return (id >> 32) == 0x00050010 && ((id & 0xffffff00) == 0x10040000 || (id & 0xffffff00) == 0x10040100 || (id & 0xffffff00) == 0x10040200); }
+static constexpr uint64_t discTileId=0xfffffffffffffffeULL;
+static bool readDisc(MCPTitleListType &title) {
+    alignas(64) MCPTitleListType entries[4]{};uint32_t count=0;
+    int handle=MCP_Open();if(handle<0) return false;
+    auto result=MCP_TitleListByDeviceType(handle,MCP_DEVICE_TYPE_ODD,&count,entries,sizeof(entries));
+    MCP_Close(handle);
+    if(result<0 || count>4) return false;
+    for(uint32_t i=0;i<count;++i) if(entries[i].appType==MCP_APP_TYPE_GAME) {title=entries[i];return true;}
+    return false;
+}
 
 MainWindow::MainWindow(int32_t w, int32_t h, MenuMusic *sound)
  : background(w,h,GX2Color{233,233,233,255}), modalShade(w,h,GX2Color{0,0,0,130}),
@@ -107,6 +118,11 @@ void MainWindow::resume(FreeTypeGX *font) {
 }
 void MainWindow::listChanged(GameList *) {}
 void MainWindow::titleChanged(gameInfo *info) {
+    if(info && info->titleId==discTileId) {
+        auto it=std::find_if(tiles.begin(),tiles.end(),[](const auto &t){return t.id==discTileId;});
+        if(it!=tiles.end() && (info->name.empty() || it->path!=info->gamePath)) {tiles.erase(it);viewDirty=true;}
+        if(info->name.empty()) return;
+    }
     if(!info || isMenu(info->titleId)) return;
     // Installed games and system applications remain available in the row.
     std::lock_guard<std::recursive_mutex> guard(tilesMutex);
@@ -140,6 +156,25 @@ void MainWindow::process() {
             }
             DEBUG_FUNCTION_LINE("Metadata scan finished in %llu ms",(unsigned long long)OSTicksToMilliseconds(OSGetSystemTime()-began));
             loaderDone=true;
+            uint64_t previous=0;
+            while(!stopLoader) {
+                MCPTitleListType disc{};
+                uint64_t current=readDisc(disc)?disc.titleId:0;
+                if(current!=previous) {
+                    gameInfo update{};update.titleId=discTileId;update.appType=MCP_APP_TYPE_GAME;
+                    if(current) {
+                        update.name="Wii U Disc";update.gamePath=nx::bounded(disc.path,sizeof(disc.path));
+                        uint8_t *xml=nullptr;uint32_t size=0;
+                        if(FSUtils::LoadFileToMem(("fs:"+update.gamePath+"/meta/meta.xml").c_str(),&xml,&size,1024*1024)>0) {
+                            auto name=nx::xmlTitle(std::string(reinterpret_cast<char*>(xml),size));
+                            if(!name.empty()) update.name=name+" (Disc)";
+                        }
+                        free(xml);
+                    }
+                    std::lock_guard<std::mutex> guard(pendingMutex);pending.push_back(update);previous=current;
+                }
+                for(int i=0;i<20 && !stopLoader;++i) OSSleepTicks(OSMillisecondsToTicks(100));
+            }
         });
     }
     std::vector<gameInfo> incoming;
@@ -340,6 +375,26 @@ void MainWindow::activate() {
     showMessage(std::string(dockNames[dockIndex])+" is not installed or could not be found.");
 }
 void MainWindow::launch(uint64_t id) {
+    if(id==discTileId) {
+        MCPTitleListType disc{};
+        if(!readDisc(disc)) {showMessage("Insert a readable Wii U game disc and try again.");return;}
+        ACPAssignTitlePatch(&disc);launching=true;launchFrame=frame;
+        _SYSLaunchTitleByPathFromLauncher(disc.path,0);return;
+    }
+    if((id>>32)==0x0005000f) {
+        // Run the plugin's preparation hook before launching its /custom/ path.
+        OSDynLoad_Module module{};void *symbol=nullptr;
+        if(OSDynLoad_Acquire("nn_acp.rpl",&module)!=OS_DYNLOAD_OK) {showMessage("Aroma homebrew launch service is unavailable.");return;}
+        OSDynLoad_FindExport(module,OS_DYNLOAD_EXPORT_FUNC,"ACPCheckTitleLaunchByTitleListTypeEx",&symbol);
+        MCPTitleListType homebrew{};homebrew.titleId=id;
+        std::snprintf(homebrew.path,sizeof(homebrew.path),"/custom/%016llX",(unsigned long long)id);
+        auto check=reinterpret_cast<int32_t(*)(MCPTitleListType*,uint32_t)>(symbol);
+        int result=check?check(&homebrew,0):-1;
+        OSDynLoad_Release(module);
+        if(result<0) {showMessage("Homebrew could not prepare. Enable Aroma's Homebrew on Menu plugin.");return;}
+        launching=true;launchFrame=frame;
+        _SYSLaunchTitleByPathFromLauncher(homebrew.path,0);return;
+    }
     DEBUG_FUNCTION_LINE("Launch requested %016llX",(unsigned long long)id);
     if(isMenu(id)) return;
     MCPTitleListType info{};

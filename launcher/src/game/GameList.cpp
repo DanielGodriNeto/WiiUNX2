@@ -57,6 +57,22 @@ int32_t GameList::load() {
         info->gamePath=nx::bounded(item.path,sizeof(item.path));info->name="Nintendo TVii";
         fullGameList.push_back(info);titleAdded(info);
     }
+    // Aroma's Homebrew on Menu plugin extends only the unfiltered title list.
+    // Keep spare capacity for synthetic entries and accept only its namespace.
+    std::vector<MCPTitleListType> aroma(8192);
+    uint32_t aromaCount=0;
+    if(MCP_TitleList(handle,&aromaCount,aroma.data(),aroma.size()*sizeof(MCPTitleListType))>=0 && aromaCount<=aroma.size()) {
+        for(uint32_t i=0;i<aromaCount;++i) {
+            auto &item=aroma[i];
+            if((item.titleId>>32)!=0x0005000f || getGameInfo(item.titleId)) continue;
+            auto *info=new gameInfo{};
+            info->titleId=item.titleId;info->appType=item.appType;
+            // The plugin exposes metadata/icons through this virtual directory.
+            char path[96];std::snprintf(path,sizeof(path),"/vol/storage_mlc01/sys/title/0005000F/%08X",unsigned(item.titleId));
+            info->gamePath=path;info->name="Homebrew application";
+            fullGameList.push_back(info);titleAdded(info);
+        }
+    }
     MCP_Close(handle);
     DEBUG_FUNCTION_LINE("Enumerated %u installed titles",unsigned(fullGameList.size()));
     titleListChanged(this);

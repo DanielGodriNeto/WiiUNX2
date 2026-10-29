@@ -1,17 +1,11 @@
 # WiiUNX2
 
-Switch 2-inspired Wii U menu for Aroma, derived from wiiu-env/launchiine.
+An independent Wii U homebrew menu for Aroma with a horizontal software row, touch navigation, search, sorting and user selection. This project is not affiliated with, endorsed by or sponsored by Nintendo. Console and software names identify compatibility and references; they do not imply approval.
 
-This source snapshot includes the modified libgui dependency. Build with devkitPro's Wii U toolchain using `launcher/Build.ps1` on Windows or make libgui followed by launcher on supported toolchains.
+Source includes modified libgui and the Aroma RPX loader/WUHB utility client libraries. Copyright and license notices are retained. Build with devkitPro's Wii U toolchain using launcher/Build.ps1. The current source requires a suitably licensed fallback font at launcher/data/fonts/font.ttf before a distributable binary is built; include that font's license. This candidate intentionally excludes the uncleared upstream fallback font.
 
-Nintendo UI sounds, console dumps, game artwork, build outputs, Git metadata and local logs are excluded. The original procedural menu music and icon generators are included. Missing UI sounds are optional.
+Nintendo firmware, game artwork, console dumps, Nintendo recordings, logs and personal play-history files are excluded. Optional UI effects are supplied locally by users who have the necessary rights; see SOUNDS.md. The original procedural background music is included. Public downloads must be built from reviewed sources; existing customized test ZIPs are not cleared public releases.
 
-The upstream fallback font is excluded pending license verification. Before building a distributable binary, supply a suitably licensed font as `launcher/data/fonts/font.ttf` and include its license. The launcher normally uses the console's shared standard font; its fallback still requires this file.
+See launcher/THIRD-PARTY.md and the bundled dependency licenses. Legal clearance of the overall design is not established by the code licenses or this notice. The project must not be described as official Nintendo software.
 
-Code is licensed under GPL-3.0-or-later; see launcher/LICENSE and source copyright notices. Upstream revisions are recorded in launcher/UPSTREAM-REVISIONS.txt.
-
-This is a reviewed upload candidate, not a hardware-tested public release. Start history with this current source snapshot and use commits and version tags going forward. Older source snapshots should only be imported after separate review.
-
-Historical source snapshot reconstructed from WiiUNX2-menu-v0.6.2. Personal demo labels and excluded assets were sanitized; this is not a byte-identical original release. No new hardware or build validation was performed.
-
-See SOUNDS.md for optional user-supplied UI effects. Version tags identify reconstructed historical snapshots; commit timestamps reflect this import, not original development dates.
+Reconstructed historical source snapshot: v0.6.3-test. Excluded assets may need replacement before building; no public binary is provided.
