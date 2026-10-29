@@ -11,7 +11,7 @@ function visit(directory) {
     const file=path.join(directory,entry.name),relative=path.relative(root,file).replaceAll('\\','/');
     if(entry.isSymbolicLink()) {errors.push(`${relative}: symbolic link requires review`);continue;}
     if(entry.isDirectory()) {visit(file);continue;}
-    if(/\.(rpx|elf|map|log|exe|o|a|d|pack|bps|wav|mp3|ogg|zip)$/i.test(entry.name)||/^wiiunx2-recent/i.test(entry.name)||/^ui(Move|Click|Back)\.bin$/i.test(entry.name)) errors.push(`${relative}: private or generated artifact`);
+    if(/\.(rpx|wuhb|wps|wms|elf|map|log|exe|o|a|d|pack|bps|wav|mp3|ogg|zip|p12|pfx|pem|key|crt|cer|der|tik|tmd|wud|wux|iso)$/i.test(entry.name)||/^wiiunx2-recent/i.test(entry.name)||entry.name==='wiiunx2-debug.enabled'||(entry.name.startsWith('.env')&&entry.name!=='.env.example')||/^ui(Move|Click|Back)\.bin$/i.test(entry.name)) errors.push(`${relative}: private or generated artifact`);
     if(/\.ttf$/i.test(entry.name)) {
       const hash=crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
       if(relative!=='launcher/data/fonts/font.ttf'||hash!=='b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5') errors.push(`${relative}: unreviewed font`);

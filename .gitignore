@@ -19,3 +19,4 @@ launcher/data/sounds/ui*.bin
 *.pack
 *.bps
 .test-output/
+**/wiiunx2-debug.enabled
