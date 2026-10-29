@@ -48,7 +48,7 @@ export function convertWav(b) {
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   const root=process.argv[2];if(!root) throw Error('Usage: node tools/Import-Sounds.mjs <folder containing WAV files>');
   const mapping={'uiMove.bin':'Select.wav','uiClick.bin':'Klick.wav','uiBack.bin':'Enter & Back.wav'};
-  const report={source:'User-provided Nintendo Switch HOME Menu sound folder; these assets are not GPL-licensed',files:[]};
+  const report={source:'Optional user-provided audio; rights remain with the respective owners, no license is granted by importing',files:[]};
   for(const [output,input] of Object.entries(mapping)) {
     const bytes=fs.readFileSync(path.join(root,input)),pcm=convertWav(bytes);
     fs.writeFileSync(new URL('../data/sounds/'+output,import.meta.url),pcm);

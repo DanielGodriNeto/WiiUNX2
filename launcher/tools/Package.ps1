@@ -46,11 +46,11 @@ foreach($name in @('ppc-freetype','ppc-harfbuzz','ppc-libgd','ppc-libpng','ppc-l
 @{
     version="$Version-experimental"; binarySHA256=$hash
     binaryBytes=(Get-Item (Join-Path $package 'men.rpx')).Length
-    checks=@('devkitPPC/wut RPX cross-compilation passed','Homebrew visibility JSON parser host regression tests passed')
+    checks=@('devkitPPC/wut RPX cross-compilation passed','History replacement/failure host tests passed; added backup-recovery test execution blocked by Windows App Control')
     regressionBaseline='Loading-selection and stable homebrew identifier regression tests passed for 0.6.6; unchanged selection behavior was not retested for the startup optimization.'
     consoleTested=$false; emulatorTested=$false
     installEnvironment='existing environment or optional aroma-wiiunx2'; pluginsIncluded=$false
-    previousHardwareResult='User reports 0.6.7 works, but direct discovery ignores Hide all homebrew'
-    currentHardwareResult='Plugin visibility settings integration awaits hardware validation'
+    previousHardwareResult='User reports tested 0.6.8 functionality works; supplied logs reviewed'
+    currentHardwareResult='Recent-history write protection/backup recovery awaits hardware validation'
 } | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $package 'build-report.json')
 Write-Host "Staged $package"

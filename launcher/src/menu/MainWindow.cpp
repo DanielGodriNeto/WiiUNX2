@@ -4,6 +4,7 @@
 #include "Library.h"
 #include "game/SystemTitles.h"
 #include "game/Homebrew.h"
+#include "utils/AtomicHistory.h"
 #include <rpxloader/rpxloader.h>
 #include <tuple>
 #include "game/Metadata.h"
@@ -506,8 +507,7 @@ void MainWindow::markPlayed(uint64_t id) {
     recent.insert(recent.begin(),id);if(recent.size()>512) recent.resize(512);
     localDays[id]=uint32_t(OSTicksToSeconds(OSGetTime())/86400);
     char path[96];std::snprintf(path,sizeof(path),"fs:/vol/external01/wiiu/wiiunx2-recent-%u.txt",unsigned(activeSlot));
-    FILE *file=std::fopen(path,"w");
-    if(file) {for(auto title:recent) std::fprintf(file,"%016llX %u\n",(unsigned long long)title,localDays[title]);std::fclose(file);}
+    if(!nx::saveHistory(path,recent,localDays)) DEBUG_FUNCTION_LINE("Recent history save failed; previous file retained");
     viewDirty=true;
 }
 void MainWindow::loadVisibleIcons() {
@@ -625,7 +625,7 @@ void MainWindow::rebuildView() {
     if(!recentLoaded) {
         recentLoaded=true;
         char path[96];std::snprintf(path,sizeof(path),"fs:/vol/external01/wiiu/wiiunx2-recent-%u.txt",unsigned(activeSlot));
-        FILE *file=std::fopen(path,"r");
+        FILE *file=nx::openHistory(path);
         if(file) {unsigned long long id;unsigned day;while(recent.size()<512 && std::fscanf(file,"%llx %u",&id,&day)==2) {recent.push_back(id);localDays[id]=day;}std::fclose(file);}
     }
     uint64_t id=restore.titleId ? restore.titleId:visible.empty()||selected>=visible.size()||visible[selected]>=tiles.size()?0:selectedTile().id;
