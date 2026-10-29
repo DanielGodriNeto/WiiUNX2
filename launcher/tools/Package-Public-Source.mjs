@@ -10,7 +10,9 @@ if(check.error) throw check.error;if(check.status!==0) process.exit(check.status
 const base=path.join(root,'.test-output');fs.mkdirSync(base,{recursive:true});
 const output=fs.mkdtempSync(path.join(base,'source-'));
 const archive=path.join(output,'WiiUNX2-source.tar.gz');
-const result=spawnSync('tar',['-czf',archive,'--exclude=.git','--exclude=.test-output','-C',root,'.'],{stdio:'inherit',shell:false});
+const windowsTar=path.join(process.env.SystemRoot||'C:/Windows','System32/tar.exe');
+const tar=process.platform==='win32'&&fs.existsSync(windowsTar)?windowsTar:'tar';
+const result=spawnSync(tar,['-czf',path.relative(root,archive),'--exclude=.git','--exclude=.test-output','.'],{cwd:root,stdio:'inherit',shell:false});
 if(result.error) throw result.error;if(result.status!==0) process.exit(result.status||1);
 const hash=crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex');
 fs.writeFileSync(archive+'.sha256',`${hash}  WiiUNX2-source.tar.gz\n`);
