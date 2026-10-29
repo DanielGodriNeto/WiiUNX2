@@ -1,13 +1,12 @@
 #include "Application.h"
 #include "common/common.h"
 #include "utils/logger.h"
-#include <whb/log_cafe.h>
-#include <whb/log_module.h>
-#include <whb/log_udp.h>
 #include <cstdio>
 #include <mutex>
 
-// Best-effort local diagnostics. No network credentials, account names or account IDs.
+static bool diagnosticsEnabled=false;
+extern "C" bool WiiUNX2DiagnosticsEnabled() {return diagnosticsEnabled;}
+// Opt-in local usage diagnostics. Title IDs and profile slots can be private.
 static void sdLog(const char *message) {
     static std::mutex mutex;
     std::lock_guard<std::mutex> guard(mutex);
@@ -19,16 +18,11 @@ static void sdLog(const char *message) {
 }
 
 int32_t main(int32_t argc, char **argv) {
-    bool moduleInit;
-    bool cafeInit = false;
-    bool udpInit  = false;
-
-    if (!(moduleInit = WHBLogModuleInit())) {
-        cafeInit = WHBLogCafeInit();
-        udpInit  = WHBLogUdpInit();
-    }
-    WHBAddLogHandler(sdLog);
-    DEBUG_FUNCTION_LINE("Starting WiiUNX2 0.6.2 Friends-icon build");
+    FILE *flag=std::fopen("fs:/vol/external01/wiiu/wiiunx2-debug.enabled","r");
+    diagnosticsEnabled=flag!=nullptr;
+    if(flag) std::fclose(flag);
+    if(diagnosticsEnabled) WHBAddLogHandler(sdLog);
+    DEBUG_FUNCTION_LINE("Starting WiiUNX2 experimental (local diagnostics enabled)");
 
     DEBUG_FUNCTION_LINE("Start main application");
     Application::instance()->exec();
@@ -38,17 +32,6 @@ int32_t main(int32_t argc, char **argv) {
 
     DEBUG_FUNCTION_LINE("Peace out...");
 
-    if (cafeInit) {
-        WHBLogCafeDeinit();
-    }
-
-    if (udpInit) {
-        WHBLogUdpDeinit();
-    }
-
-    if (moduleInit) {
-        WHBLogModuleDeinit();
-    }
-    WHBRemoveLogHandler(sdLog);
+    if(diagnosticsEnabled) WHBRemoveLogHandler(sdLog);
     return 0;
 }
