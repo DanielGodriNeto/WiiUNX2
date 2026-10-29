@@ -59,6 +59,11 @@ int32_t GameList::load() {
         fullGameList.push_back(info);titleAdded(info);
     }
     MCP_Close(handle);
+    DEBUG_FUNCTION_LINE("Enumerated %u installed titles",unsigned(fullGameList.size()));
+    titleListChanged(this);
+    return fullGameList.size();
+}
+void GameList::loadHomebrew() {
     for(const auto &path:nx::homebrewPaths()) {
         uint64_t id=nx::homebrewId(path);
         if(getGameInfo(id)) {DEBUG_FUNCTION_LINE("Skipped duplicate homebrew identifier");continue;}
@@ -66,9 +71,7 @@ int32_t GameList::load() {
         info->gamePath=path;info->name=path.substr(path.find_last_of('/')+1);
         fullGameList.push_back(info);titleAdded(info);
     }
-    DEBUG_FUNCTION_LINE("Enumerated %u installed titles",unsigned(fullGameList.size()));
     titleListChanged(this);
-    return fullGameList.size();
 }
 // CPU metadata only. Called by the loader worker; never creates a GPU texture.
 bool GameList::loadNext() {

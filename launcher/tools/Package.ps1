@@ -46,10 +46,11 @@ foreach($name in @('ppc-freetype','ppc-harfbuzz','ppc-libgd','ppc-libpng','ppc-l
 @{
     version="$Version-experimental"; binarySHA256=$hash
     binaryBytes=(Get-Item (Join-Path $package 'men.rpx')).Length
-    checks=@('devkitPPC/wut RPX cross-compilation passed','loading-selection and stable homebrew identifier regression tests passed')
+    checks=@('devkitPPC/wut RPX cross-compilation passed')
+    regressionBaseline='Loading-selection and stable homebrew identifier regression tests passed for 0.6.6; unchanged selection behavior was not retested for the startup optimization.'
     consoleTested=$false; emulatorTested=$false
     installEnvironment='existing environment or optional aroma-wiiunx2'; pluginsIncluded=$false
-    previousHardwareResult='User reports discs and native recent sorting work; Aroma apps absent and loading reset selection'
-    currentHardwareResult='Direct homebrew discovery/loading-selection fix awaits hardware validation'
+    previousHardwareResult='User reports 0.6.6 features all work, with a pause before initial title loading'
+    currentHardwareResult='Startup pipeline/SD-scan optimization awaits hardware timing measurements'
 } | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $package 'build-report.json')
 Write-Host "Staged $package"

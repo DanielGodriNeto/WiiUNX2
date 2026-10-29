@@ -175,10 +175,24 @@ void MainWindow::process() {
         loader=std::thread([this] {
             auto began=OSGetSystemTime();
             loaderFailed=gameList.load()<0;
+            DEBUG_FUNCTION_LINE("Installed enumeration: %llu ms",(unsigned long long)OSTicksToMilliseconds(OSGetSystemTime()-began));
             for(int i=0;i<gameList.size() && !stopLoader;++i) {
                 gameList.loadNext();
                 std::lock_guard<std::mutex> guard(pendingMutex);
                 pending.push_back(*gameList.at(i));
+                if(i==0) DEBUG_FUNCTION_LINE("First installed title queued: %llu ms",(unsigned long long)OSTicksToMilliseconds(OSGetSystemTime()-began));
+            }
+            // Publish installed software before any SD traversal or bundle work.
+            if(!stopLoader) {
+                int firstHomebrew=gameList.size();
+                auto scanStart=OSGetSystemTime();
+                gameList.loadHomebrew();
+                DEBUG_FUNCTION_LINE("SD discovery: %llu ms",(unsigned long long)OSTicksToMilliseconds(OSGetSystemTime()-scanStart));
+                for(int i=firstHomebrew;i<gameList.size() && !stopLoader;++i) {
+                    gameList.loadNext();
+                    std::lock_guard<std::mutex> guard(pendingMutex);
+                    pending.push_back(*gameList.at(i));
+                }
             }
             DEBUG_FUNCTION_LINE("Metadata scan finished in %llu ms",(unsigned long long)OSTicksToMilliseconds(OSGetSystemTime()-began));
             loaderDone=true;

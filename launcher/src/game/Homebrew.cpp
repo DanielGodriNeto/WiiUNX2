@@ -10,6 +10,7 @@
 #include <fstream>
 #include <mutex>
 #include <cstdlib>
+#include <unordered_set>
 namespace nx {
 static std::mutex bundleMutex;
 static std::string lower(std::string s) {for(char &c:s) if(c>='A'&&c<='Z') c+=32;return s;}
@@ -21,10 +22,17 @@ static void scan(const std::string &path,int depth,std::vector<std::string> &out
         std::string name=entry->d_name;if(name.empty()||name[0]=='.') continue;
         if(!budget) break;
         --budget;
-        auto child=path+"/"+name;struct stat st{};
-        if(lstat(("fs:/vol/external01/"+child).c_str(),&st)!=0) continue;
-        if(S_ISDIR(st.st_mode)) scan(child,depth+1,out,budget);
-        else if(S_ISREG(st.st_mode)&&out.size()<1024) {
+        auto child=path+"/"+name;
+        auto type=entry->d_type;
+        // readdir already supplies the kind on supported filesystems. Avoid
+        // another IPC/stat for each asset; retain a fallback for DT_UNKNOWN.
+        if(type==DT_UNKNOWN) {
+            struct stat st{};
+            if(lstat(("fs:/vol/external01/"+child).c_str(),&st)!=0) continue;
+            type=S_ISDIR(st.st_mode)?DT_DIR:S_ISREG(st.st_mode)?DT_REG:DT_LNK;
+        }
+        if(type==DT_DIR) scan(child,depth+1,out,budget);
+        else if(type==DT_REG&&out.size()<1024) {
             auto dot=name.find_last_of('.');auto ext=dot==std::string::npos?"":lower(name.substr(dot));
             if(ext==".rpx"||ext==".wuhb") out.push_back(child);
         }
@@ -39,11 +47,12 @@ std::vector<std::string> homebrewPaths() {
         for(const auto &pattern:patterns) if(fnmatch(pattern.c_str(),lower(p.substr(10)).c_str(),0)==0) return true;
         return false;
     }),paths.end());
-    std::sort(paths.begin(),paths.end());auto all=paths;
+    std::sort(paths.begin(),paths.end());
+    std::unordered_set<std::string> bundleStems;
+    for(const auto &path:paths) if(bundled(path)) bundleStems.insert(lower(path.substr(0,path.size()-5)));
     paths.erase(std::remove_if(paths.begin(),paths.end(),[&](const auto &p){
         if(bundled(p)) return false;
-        for(const auto &other:all) if(bundled(other)&&lower(other.substr(0,other.size()-5))==lower(p.substr(0,p.size()-4))) return true;
-        return false;
+        return bundleStems.count(lower(p.substr(0,p.size()-4)))!=0;
     }),paths.end());
     DEBUG_FUNCTION_LINE("Direct SD scan: %u homebrew apps",unsigned(paths.size()));return paths;
 }
