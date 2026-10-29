@@ -46,11 +46,11 @@ foreach($name in @('ppc-freetype','ppc-harfbuzz','ppc-libgd','ppc-libpng','ppc-l
 @{
     version="$Version-experimental"; binarySHA256=$hash
     binaryBytes=(Get-Item (Join-Path $package 'men.rpx')).Length
-    checks=@('devkitPPC/wut RPX cross-compilation passed','History replacement/failure host tests passed; added backup-recovery test execution blocked by Windows App Control')
+    checks=@('devkitPPC/wut RPX cross-compilation passed','History replacement/failure/backup-recovery host tests passed on 2026-10-29')
     regressionBaseline='Loading-selection and stable homebrew identifier regression tests passed for 0.6.6; unchanged selection behavior was not retested for the startup optimization.'
     consoleTested=$false; emulatorTested=$false
     installEnvironment='existing environment or optional aroma-wiiunx2'; pluginsIncluded=$false
     previousHardwareResult='User reports tested 0.6.8 functionality works; supplied logs reviewed'
-    currentHardwareResult='Recent-history write protection/backup recovery awaits hardware validation'
+    currentHardwareResult='In-process installed-title name reuse on applet return awaits hardware timing validation'
 } | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $package 'build-report.json')
 Write-Host "Staged $package"

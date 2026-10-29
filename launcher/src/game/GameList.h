@@ -16,6 +16,7 @@ typedef struct _gameInfo {
     std::string gamePath;
     GuiImageData *imageData;
     uint64_t launchId=0;
+    uint32_t titleVersion=0;
 } gameInfo;
 
 class GameList {

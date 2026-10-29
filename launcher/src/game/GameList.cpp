@@ -10,6 +10,12 @@
 #include <cstdio>
 #include <cstring>
 #include <memory>
+#include <unordered_map>
+namespace {
+struct CachedName {std::string path,name;uint32_t version;};
+// CPU strings only. The loader is joined before a replacement menu is created.
+std::unordered_map<uint64_t,CachedName> names;
+}
 
 GameList::GameList() {}
 GameList::~GameList() { clear(); }
@@ -42,7 +48,7 @@ int32_t GameList::load() {
             const auto &item=list[i];
             if(getGameInfo(item.titleId)) continue;
             auto *info=new gameInfo{};
-            info->titleId=item.titleId;info->appType=item.appType;
+            info->titleId=item.titleId;info->appType=item.appType;info->titleVersion=item.titleVersion;
             info->gamePath=nx::bounded(item.path,sizeof(item.path));
             char fallback[48];std::snprintf(fallback,sizeof(fallback),"Software %016llX",(unsigned long long)item.titleId);
             info->name=fallback;
@@ -54,7 +60,7 @@ int32_t GameList::load() {
     for(auto id:nx::tviiTitles) {
         MCPTitleListType item{};
         if(getGameInfo(id) || MCP_GetTitleInfo(handle,id,&item)!=0) continue;
-        auto *info=new gameInfo{};info->titleId=id;info->appType=item.appType;
+        auto *info=new gameInfo{};info->titleId=id;info->appType=item.appType;info->titleVersion=item.titleVersion;
         info->gamePath=nx::bounded(item.path,sizeof(item.path));info->name="Nintendo TVii";
         fullGameList.push_back(info);titleAdded(info);
     }
@@ -80,6 +86,10 @@ bool GameList::loadNext() {
     if(nx::isHomebrew(info->titleId)) {
         info->name=nx::homebrewName(info->gamePath);titleUpdated(info);return nextMetadata>=fullGameList.size();
     }
+    auto cached=names.find(info->titleId);
+    if(cached!=names.end()&&cached->second.path==info->gamePath&&cached->second.version==info->titleVersion) {
+        info->name=cached->second.name;titleUpdated(info);return nextMetadata>=fullGameList.size();
+    }
     std::string name;
     // ACPGetTitleMetaXml rejects buffers not aligned to 64 bytes.
     // Keep the upstream 0x4000-byte capacity as well as current wut's declared struct size.
@@ -102,7 +112,11 @@ bool GameList::loadNext() {
             name=nx::xmlTitle(std::string(reinterpret_cast<char *>(bytes),size)); free(bytes);
         }
     }
-    if(!name.empty()) info->name=name;
+    if(!name.empty()) {
+        info->name=name;
+        if(names.size()>=8192) names.clear();
+        names[info->titleId]={info->gamePath,name,info->titleVersion};
+    }
     titleUpdated(info);
     return nextMetadata>=fullGameList.size();
 }
