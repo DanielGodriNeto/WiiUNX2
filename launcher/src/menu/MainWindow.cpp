@@ -8,6 +8,7 @@
 #include "fs/FSUtils.h"
 #include "utils/logger.h"
 #include <nn/act.h>
+#include <nn/pdm/pdm_cpp.h>
 #include <sysapp/title.h>
 #include <malloc.h>
 #include "resources/Resources.h"
@@ -141,6 +142,27 @@ void MainWindow::drawText(GuiText &text,CVideo *v,float x,float y) {
     text.setPosition(x-width/2.f,height/2.f-y); text.draw(v);
 }
 void MainWindow::process() {
+    if(historyRead.valid() && historyRead.wait_for(std::chrono::seconds(0))==std::future_status::ready) {
+        auto result=historyRead.get();
+        if(historySlot==activeSlot) {nativeDays=std::move(result);viewDirty=true;}
+    }
+    if(!historyRead.valid() && historySlot!=activeSlot) {
+        historySlot=activeSlot;nativeDays.clear();viewDirty=true;
+        auto slot=activeSlot;
+        historyRead=std::async(std::launch::async,[slot] {
+            std::unordered_map<uint64_t,uint32_t> dates;
+            if(slot<1 || slot>12 || nn::pdm::Initialize()!=0) return dates;
+            uint32_t length=0,actual=0;
+            if(nn::pdm::GetPlayStatsLength(&length,slot)==0 && length>0 && length<=8192) {
+                std::vector<nn::pdm::PlayStats> stats(length);
+                if(nn::pdm::GetPlayStats(&actual,stats.data(),slot,length)==0 && actual<=length)
+                    for(uint32_t i=0;i<actual;++i) dates[stats[i].title_id]=stats[i].last_time_played;
+            }
+            nn::pdm::Finalize();
+            DEBUG_FUNCTION_LINE("Native play history: %u titles",unsigned(dates.size()));
+            return dates;
+        });
+    }
     std::lock_guard<std::recursive_mutex> guard(tilesMutex);
     ++frame;
     if(shutdownFrame && frame>=shutdownFrame) OSShutdown();
@@ -454,8 +476,10 @@ MainWindow::ViewState MainWindow::saveView() const {
 void MainWindow::markPlayed(uint64_t id) {
     recent.erase(std::remove(recent.begin(),recent.end(),id),recent.end());
     recent.insert(recent.begin(),id);if(recent.size()>512) recent.resize(512);
-    FILE *file=std::fopen("fs:/vol/external01/wiiu/wiiunx2-recent.txt","w");
-    if(file) {for(auto title:recent) std::fprintf(file,"%016llX\n",(unsigned long long)title);std::fclose(file);}
+    localDays[id]=uint32_t(OSTicksToSeconds(OSGetTime())/86400);
+    char path[96];std::snprintf(path,sizeof(path),"fs:/vol/external01/wiiu/wiiunx2-recent-%u.txt",unsigned(activeSlot));
+    FILE *file=std::fopen(path,"w");
+    if(file) {for(auto title:recent) std::fprintf(file,"%016llX %u\n",(unsigned long long)title,localDays[title]);std::fclose(file);}
     viewDirty=true;
 }
 void MainWindow::loadVisibleIcons() {
@@ -547,6 +571,7 @@ void MainWindow::selectAccount() {
         return;
     }
     activeSlot=actual;profileName.setText(account.name.c_str());accountsOpen=false;focusRow=2;
+    recent.clear();localDays.clear();nativeDays.clear();recentLoaded=false;viewDirty=true;
     DEBUG_FUNCTION_LINE("Active account slot changed to %u",unsigned(activeSlot));
 }
 void MainWindow::drawAccounts(CVideo *v) {
@@ -570,17 +595,28 @@ void MainWindow::drawAccounts(CVideo *v) {
 void MainWindow::rebuildView() {
     if(!recentLoaded) {
         recentLoaded=true;
-        FILE *file=std::fopen("fs:/vol/external01/wiiu/wiiunx2-recent.txt","r");
-        if(file) {unsigned long long id;while(recent.size()<512 && std::fscanf(file,"%llx",&id)==1) recent.push_back(id);std::fclose(file);}
+        char path[96];std::snprintf(path,sizeof(path),"fs:/vol/external01/wiiu/wiiunx2-recent-%u.txt",unsigned(activeSlot));
+        FILE *file=std::fopen(path,"r");
+        if(file) {unsigned long long id;unsigned day;while(recent.size()<512 && std::fscanf(file,"%llx %u",&id,&day)==2) {recent.push_back(id);localDays[id]=day;}std::fclose(file);}
     }
     uint64_t id=restore.titleId ? restore.titleId:visible.empty()?0:selectedTile().id;
     visible.clear();
     for(size_t i=0;i<tiles.size();++i) if(nx::matches(tiles[i].name,query)) visible.push_back(i);
-    if(sortMode) std::stable_sort(visible.begin(),visible.end(),[this](size_t a,size_t b) {
+    // Cache ranks once per rebuild, not a linear history scan per comparison.
+    std::unordered_map<uint64_t,size_t> ranks;
+    for(size_t i=0;i<recent.size();++i) ranks.emplace(recent[i],i);
+    auto dayFor=[this](uint64_t id) {
+        auto native=nativeDays.find(id),local=localDays.find(id);
+        return std::max(native==nativeDays.end()?0u:native->second,local==localDays.end()?0u:local->second);
+    };
+    if(sortMode) std::stable_sort(visible.begin(),visible.end(),[this,&ranks,&dayFor](size_t a,size_t b) {
         if(sortMode==3) {
-            auto left=std::find(recent.begin(),recent.end(),tiles[a].id==discTileId?discRecentId:tiles[a].id);
-            auto right=std::find(recent.begin(),recent.end(),tiles[b].id==discTileId?discRecentId:tiles[b].id);
-            if(left!=right) return left<right;
+            auto aId=tiles[a].id==discTileId?discRecentId:tiles[a].id,bId=tiles[b].id==discTileId?discRecentId:tiles[b].id;
+            auto aDay=dayFor(aId),bDay=dayFor(bId);
+            if(aDay!=bDay) return aDay>bDay;
+            auto left=ranks.find(aId),right=ranks.find(bId);
+            size_t aRank=left==ranks.end()?recent.size():left->second,bRank=right==ranks.end()?recent.size():right->second;
+            if(aRank!=bRank) return aRank<bRank;
             return nx::titleBefore(tiles[a].name,tiles[a].id,tiles[b].name,tiles[b].id,1);
         }
         return nx::titleBefore(tiles[a].name,tiles[a].id,tiles[b].name,tiles[b].id,sortMode);

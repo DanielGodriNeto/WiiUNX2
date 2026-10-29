@@ -7,6 +7,7 @@
 #include <thread>
 #include <atomic>
 #include <future>
+#include <unordered_map>
 
 class MainWindow : public sigslot::has_slots<> {
 public:
@@ -63,6 +64,9 @@ private:
     void launch(uint64_t id);
     void markPlayed(uint64_t id);
     std::vector<uint64_t> recent;
+    std::unordered_map<uint64_t,uint32_t> localDays, nativeDays;
+    std::future<std::unordered_map<uint64_t,uint32_t>> historyRead;
+    uint8_t historySlot=255;
     uint64_t discRecentId=0;
     bool recentLoaded=false, dragging=false, dragMoved=false;
     float dragStartX=0, dragStartScroll=0;
