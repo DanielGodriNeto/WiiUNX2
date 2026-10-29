@@ -1,5 +1,6 @@
 // WiiUNX2 GPL-3.0-or-later. Uses Aroma's official bundle client.
 #include "Homebrew.h"
+#include "HomebrewPolicy.h"
 #include "Metadata.h"
 #include "fs/FSUtils.h"
 #include "utils/logger.h"
@@ -11,10 +12,31 @@
 #include <mutex>
 #include <cstdlib>
 #include <unordered_set>
+#include <coreinit/ios.h>
 namespace nx {
 static std::mutex bundleMutex;
 static std::string lower(std::string s) {for(char &c:s) if(c>='A'&&c<='Z') c+=32;return s;}
 static bool bundled(const std::string &s) {return s.size()>=5&&lower(s.substr(s.size()-5))==".wuhb";}
+static HomebrewPolicy readPolicy() {
+    // Query the active environment, including custom aroma-wiiunx2 installs.
+    alignas(64) char environment[256]{};
+    alignas(64) int command=0xf9;
+    auto handle=IOS_Open("/dev/mcp",IOS_OPEN_READ);
+    if(handle>=0) {
+        auto status=IOS_Ioctl(handle,100,&command,sizeof(command),environment,sizeof(environment));
+        IOS_Close(handle);
+        if(status!=IOS_ERROR_OK) environment[0]=0;
+    }
+    environment[255]=0;
+    std::string root=environment[0]?environment:"fs:/vol/external01/wiiu/environments/aroma";
+    uint8_t *data=nullptr;uint32_t size=0;
+    HomebrewPolicy policy;
+    if(FSUtils::LoadFileToMem((root+"/plugins/config/homebrew_on_menu.json").c_str(),&data,&size,65536)>0)
+        policy=parseHomebrewPolicy(std::string(reinterpret_cast<char*>(data),size));
+    free(data);
+    DEBUG_FUNCTION_LINE("Homebrew visibility: hide=%u hideRPX=%u preferWUHB=%u",unsigned(policy.hideHomebrew),unsigned(policy.hideAllRPX),unsigned(policy.preferWUHB));
+    return policy;
+}
 static void scan(const std::string &path,int depth,std::vector<std::string> &out,size_t &budget) {
     if(depth>8||!budget) return;
     DIR *dir=opendir(("fs:/vol/external01/"+path).c_str());if(!dir) return;
@@ -40,10 +62,20 @@ static void scan(const std::string &path,int depth,std::vector<std::string> &out
     closedir(dir);
 }
 std::vector<std::string> homebrewPaths() {
+    auto policy=readPolicy();
+    if(policy.hideHomebrew) {
+        // Match the plugin's explicit Homebrew Launcher exception and priority.
+        for(const char *path:{"wiiu/apps/homebrew_launcher.wuhb","wiiu/apps/homebrew_launcher/homebrew_launcher.wuhb"}) {
+            struct stat st{};
+            if(stat((std::string("fs:/vol/external01/")+path).c_str(),&st)==0&&S_ISREG(st.st_mode)) return {path};
+        }
+        return {};
+    }
     std::vector<std::string> paths,patterns;size_t budget=16384;scan("wiiu/apps",0,paths,budget);
     std::ifstream ignore("fs:/vol/external01/wiiu/apps/.ignore");std::string line;
     while(patterns.size()<1024&&std::getline(ignore,line)) {line=trim(line);if(!line.empty()&&line[0]!='#') patterns.push_back(lower(line));}
     paths.erase(std::remove_if(paths.begin(),paths.end(),[&](const auto &p){
+        if(policy.hideAllRPX&&!bundled(p)) return true;
         for(const auto &pattern:patterns) if(fnmatch(pattern.c_str(),lower(p.substr(10)).c_str(),0)==0) return true;
         return false;
     }),paths.end());
@@ -52,7 +84,7 @@ std::vector<std::string> homebrewPaths() {
     for(const auto &path:paths) if(bundled(path)) bundleStems.insert(lower(path.substr(0,path.size()-5)));
     paths.erase(std::remove_if(paths.begin(),paths.end(),[&](const auto &p){
         if(bundled(p)) return false;
-        return bundleStems.count(lower(p.substr(0,p.size()-4)))!=0;
+        return policy.preferWUHB&&bundleStems.count(lower(p.substr(0,p.size()-4)))!=0;
     }),paths.end());
     DEBUG_FUNCTION_LINE("Direct SD scan: %u homebrew apps",unsigned(paths.size()));return paths;
 }

@@ -1,5 +1,7 @@
 # WiiUNX2 source attribution
 
+The vendored nlohmann JSON 3.11.2 header is MIT licensed; see src/utils/nlohmann-json-LICENSE.txt. It is used to read the existing Homebrew on Menu storage settings.
+
 Direct Aroma homebrew support links wiiu-env/librpxloader and wiiu-env/libwuhbutils under LGPL-3.0. Their complete client sources, licenses and build files are included in source/dependencies. The runtime modules are supplied by the user's Aroma installation.
 
 WiiUNX2's replacement launcher is derived from [launchiine](https://github.com/wiiu-env/launchiine), with the original copyright notices preserved. Its rendering dependency is [wiiu-env/libgui](https://github.com/wiiu-env/libgui), whose source files carry GPL notices. The complete GPL text is provided in launcher/LICENSE, also applicable to the new menu implementation and icon generator. Original upstream assets remain in the source tree with their existing provenance; WiiUNX2's new dock assets are generated from its included source.
