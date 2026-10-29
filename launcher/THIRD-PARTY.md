@@ -1,5 +1,7 @@
 # WiiUNX2 source attribution
 
+Fallback font: unmodified Noto Sans Regular from notofonts/noto-fonts revision ffebf8c1ee449e544955a7e813c54f9b73848eac, hinted/ttf/NotoSans/NotoSans-Regular.ttf, distributed as data/fonts/font.ttf. SHA256 b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5. Licensed under SIL OFL 1.1; see licenses/NotoSans-OFL.txt. The previous uncleared fallback is excluded from new public candidates. Historical snapshots are unchanged.
+
 The vendored nlohmann JSON 3.11.2 header is MIT licensed; see src/utils/nlohmann-json-LICENSE.txt. It is used to read the existing Homebrew on Menu storage settings.
 
 Direct Aroma homebrew support links wiiu-env/librpxloader and wiiu-env/libwuhbutils under LGPL-3.0. Their complete client sources, licenses and build files are included in source/dependencies. The runtime modules are supplied by the user's Aroma installation.

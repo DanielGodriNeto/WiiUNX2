@@ -10,6 +10,7 @@
 .env*
 launcher/src/resources/filelist.h
 launcher/data/fonts/*.ttf
+!launcher/data/fonts/font.ttf
 launcher/data/sounds/ui*.bin
 **/wiiunx2-recent*.txt*
 **/wiiunx2.log

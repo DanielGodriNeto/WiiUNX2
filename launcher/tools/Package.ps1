@@ -40,6 +40,8 @@ foreach($dependency in @('librpxloader','libwuhbutils')) {
     }
 }
 New-Item -ItemType Directory -Path $licenses | Out-Null
+Copy-Item -LiteralPath (Join-Path $launcher 'licenses/NotoSans-OFL.txt') -Destination $licenses
+Copy-Item -LiteralPath (Join-Path $launcher 'licenses') -Destination $source -Recurse
 foreach($name in @('ppc-freetype','ppc-harfbuzz','ppc-libgd','ppc-libpng','ppc-libjpeg-turbo','ppc-libmad','ppc-libvorbisidec','ppc-libogg','ppc-bzip2','ppc-brotli','ppc-zlib')) {
     Copy-Item -LiteralPath "C:/devkitPro/portlibs/ppc/licenses/$name" -Destination $licenses -Recurse
 }
