@@ -8,4 +8,4 @@ Nintendo firmware, game artwork, console dumps, Nintendo recordings, logs and pe
 
 See launcher/THIRD-PARTY.md and the bundled dependency licenses. Legal clearance of the overall design is not established by the code licenses or this notice. The project must not be described as official Nintendo software.
 
-Reconstructed historical source snapshot: v0.6.5-test. Excluded assets may need replacement before building; no public binary is provided.
+Reconstructed historical source snapshot: v0.6.6-test. Excluded assets may need replacement before building; no public binary is provided.

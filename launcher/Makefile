@@ -46,13 +46,13 @@ CXXFLAGS	:= $(CFLAGS) -std=gnu++17
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-g $(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lgui -lfreetype -lharfbuzz -lfreetype -lgd -lpng -ljpeg -lz -lmad -lvorbisidec -logg -lbz2 -lbrotlidec -lbrotlicommon -lwut
+LIBS	:= -lgui -lrpxloader -lwuhbutils -lfreetype -lharfbuzz -lfreetype -lgd -lpng -ljpeg -lz -lmad -lvorbisidec -logg -lbz2 -lbrotlidec -lbrotlicommon -lwut
 
 #-------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level
 # containing include and lib
 #-------------------------------------------------------------------------------
-LIBDIRS	:= $(TOPDIR)/../dependencies/libgui $(PORTLIBS) $(WUT_ROOT)
+LIBDIRS	:= $(TOPDIR)/../dependencies/libgui $(TOPDIR)/../dependencies/librpxloader $(TOPDIR)/../dependencies/libwuhbutils $(PORTLIBS) $(WUT_ROOT)
 
 #-------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional

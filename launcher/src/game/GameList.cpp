@@ -2,6 +2,7 @@
 #include "GameList.h"
 #include "Metadata.h"
 #include "SystemTitles.h"
+#include "Homebrew.h"
 #include "fs/FSUtils.h"
 #include "utils/logger.h"
 #include <nn/acp/title.h>
@@ -57,23 +58,14 @@ int32_t GameList::load() {
         info->gamePath=nx::bounded(item.path,sizeof(item.path));info->name="Nintendo TVii";
         fullGameList.push_back(info);titleAdded(info);
     }
-    // Aroma's Homebrew on Menu plugin extends only the unfiltered title list.
-    // Keep spare capacity for synthetic entries and accept only its namespace.
-    std::vector<MCPTitleListType> aroma(8192);
-    uint32_t aromaCount=0;
-    if(MCP_TitleList(handle,&aromaCount,aroma.data(),aroma.size()*sizeof(MCPTitleListType))>=0 && aromaCount<=aroma.size()) {
-        for(uint32_t i=0;i<aromaCount;++i) {
-            auto &item=aroma[i];
-            if((item.titleId>>32)!=0x0005000f || getGameInfo(item.titleId)) continue;
-            auto *info=new gameInfo{};
-            info->titleId=item.titleId;info->appType=item.appType;
-            // The plugin exposes metadata/icons through this virtual directory.
-            char path[96];std::snprintf(path,sizeof(path),"/vol/storage_mlc01/sys/title/0005000F/%08X",unsigned(item.titleId));
-            info->gamePath=path;info->name="Homebrew application";
-            fullGameList.push_back(info);titleAdded(info);
-        }
-    }
     MCP_Close(handle);
+    for(const auto &path:nx::homebrewPaths()) {
+        uint64_t id=nx::homebrewId(path);
+        if(getGameInfo(id)) {DEBUG_FUNCTION_LINE("Skipped duplicate homebrew identifier");continue;}
+        auto *info=new gameInfo{};info->titleId=id;info->appType=MCP_APP_TYPE_GAME;
+        info->gamePath=path;info->name=path.substr(path.find_last_of('/')+1);
+        fullGameList.push_back(info);titleAdded(info);
+    }
     DEBUG_FUNCTION_LINE("Enumerated %u installed titles",unsigned(fullGameList.size()));
     titleListChanged(this);
     return fullGameList.size();
@@ -82,6 +74,9 @@ int32_t GameList::load() {
 bool GameList::loadNext() {
     if(nextMetadata>=fullGameList.size()) return true;
     auto *info=fullGameList[nextMetadata++];
+    if(nx::isHomebrew(info->titleId)) {
+        info->name=nx::homebrewName(info->gamePath);titleUpdated(info);return nextMetadata>=fullGameList.size();
+    }
     std::string name;
     // ACPGetTitleMetaXml rejects buffers not aligned to 64 bytes.
     // Keep the upstream 0x4000-byte capacity as well as current wut's declared struct size.

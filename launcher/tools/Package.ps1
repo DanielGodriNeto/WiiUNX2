@@ -32,6 +32,13 @@ foreach($name in @('include','source','data','Makefile','README.md')) {
 }
 Copy-Item -LiteralPath (Join-Path $launcher 'LICENSE') -Destination (Join-Path $libout 'COPYING')
 $licenses=Join-Path $package 'licenses'
+foreach($dependency in @('librpxloader','libwuhbutils')) {
+    $depout=Join-Path $package "source/dependencies/$dependency"
+    New-Item -ItemType Directory -Path $depout -Force | Out-Null
+    foreach($name in @('source','include','Makefile','LICENSE','README.md')) {
+        Copy-Item -LiteralPath (Join-Path $workspace "dependencies/$dependency/$name") -Destination $depout -Recurse
+    }
+}
 New-Item -ItemType Directory -Path $licenses | Out-Null
 foreach($name in @('ppc-freetype','ppc-harfbuzz','ppc-libgd','ppc-libpng','ppc-libjpeg-turbo','ppc-libmad','ppc-libvorbisidec','ppc-libogg','ppc-bzip2','ppc-brotli','ppc-zlib')) {
     Copy-Item -LiteralPath "C:/devkitPro/portlibs/ppc/licenses/$name" -Destination $licenses -Recurse
@@ -39,10 +46,10 @@ foreach($name in @('ppc-freetype','ppc-harfbuzz','ppc-libgd','ppc-libpng','ppc-l
 @{
     version="$Version-experimental"; binarySHA256=$hash
     binaryBytes=(Get-Item (Join-Path $package 'men.rpx')).Length
-    checks=@('devkitPPC/wut RPX cross-compilation passed','nine-slot dock, TVii IDs and native navigation/boundary tests passed','metadata/Unicode/icon-validation/account paging host tests passed','search/sort/accent/keyboard boundary host tests passed','rounded texture alpha/pitch/capacity checks passed','rounded panel/keyboard alpha corners and account-gradient pixels verified','HOME/profile/accounts/search/options/shutdown previews visually inspected','sound WAV conversion and imported PCM validation passed')
+    checks=@('devkitPPC/wut RPX cross-compilation passed','loading-selection and stable homebrew identifier regression tests passed')
     consoleTested=$false; emulatorTested=$false
     installEnvironment='existing environment or optional aroma-wiiunx2'; pluginsIncluded=$false
-    previousHardwareResult='User reports no more crashes with version 0.4'
-    currentHardwareResult='0.6.2 Friends icon update need hardware validation'
+    previousHardwareResult='User reports discs and native recent sorting work; Aroma apps absent and loading reset selection'
+    currentHardwareResult='Direct homebrew discovery/loading-selection fix awaits hardware validation'
 } | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $package 'build-report.json')
 Write-Host "Staged $package"

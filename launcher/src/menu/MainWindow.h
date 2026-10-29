@@ -69,6 +69,7 @@ private:
     uint8_t historySlot=255;
     uint64_t discRecentId=0;
     bool recentLoaded=false, dragging=false, dragMoved=false;
+    bool userNavigated=false;
     float dragStartX=0, dragStartScroll=0;
     void move(int delta);
     void showMessage(const std::string &message, bool power = false);

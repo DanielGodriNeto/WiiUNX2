@@ -3,6 +3,8 @@
 #include "HomeGeometry.h"
 #include "Library.h"
 #include "game/SystemTitles.h"
+#include "game/Homebrew.h"
+#include <rpxloader/rpxloader.h>
 #include <tuple>
 #include "game/Metadata.h"
 #include "fs/FSUtils.h"
@@ -290,6 +292,7 @@ void MainWindow::showMessage(const std::string &text,bool power) {
     modalPrompts[1].caption->setText(power?"Power off":"OK");
 }
 void MainWindow::move(int delta) {
+    userNavigated=true;
     restore.titleId=0;
     if(focusRow==1) dockIndex=nx::moveSelection(dockIndex,delta,dock.size());
     else if(!visible.empty()) selected=nx::moveSelection(selected,delta,visible.size());
@@ -351,7 +354,7 @@ void MainWindow::handleInput(GuiController *c) {
     if(c->chanIdx==0) {
         float x=c->data.x+640,y=360-c->data.y;
         if(c->data.touched && !c->lastData.touched && y>=202 && y<=458) {
-            dragging=true;dragMoved=false;dragStartX=x;dragStartScroll=scroll;return;
+            userNavigated=true;dragging=true;dragMoved=false;dragStartX=x;dragStartScroll=scroll;return;
         }
         if(dragging && c->data.touched) {
             float distance=x-dragStartX;
@@ -375,6 +378,7 @@ void MainWindow::handleInput(GuiController *c) {
     bool touch=c->chanIdx==0 && c->data.touched && !c->lastData.touched;
     bool pointer=c->chanIdx!=0 && c->data.validPointer && (pressed&T::BUTTON_A);
     if(touch || pointer) {
+        userNavigated=true;
         float x=c->data.x+640,y=360-c->data.y;
         if(y>=202 && y<=458) {
             int i=nx::hitTile(x,y,scroll,visible.size());
@@ -423,6 +427,16 @@ void MainWindow::activate() {
     showMessage(std::string(dockNames[dockIndex])+" is not installed or could not be found.");
 }
 void MainWindow::launch(uint64_t id) {
+    if(nx::isHomebrew(id)) {
+        auto tile=std::find_if(tiles.begin(),tiles.end(),[id](const auto &t){return t.id==id;});
+        if(tile==tiles.end()) return;
+        static bool ready=false;
+        auto result=ready?RPX_LOADER_RESULT_SUCCESS:RPXLoader_InitLibrary();
+        if(result==RPX_LOADER_RESULT_SUCCESS) {ready=true;result=RPXLoader_LaunchHomebrew(tile->path.c_str());}
+        DEBUG_FUNCTION_LINE("Direct Aroma launch result %d",int(result));
+        if(result!=RPX_LOADER_RESULT_SUCCESS) {showMessage(std::string("Aroma homebrew launch failed: ")+RPXLoader_GetStatusStr(result));return;}
+        markPlayed(id);launching=true;launchFrame=frame;return;
+    }
     if(id==discTileId) {
         MCPTitleListType disc{};
         if(!readDisc(disc)) {showMessage("Insert a readable Wii U game disc and try again.");return;}
@@ -512,9 +526,10 @@ void MainWindow::loadVisibleIcons() {
         auto i=visible[pos];auto &tile=tiles[i];
         if(!needed[i] || tile.attempted || tile.path.empty()) continue;
         tile.attempted=true;
-        auto path="fs:"+tile.path+"/meta/iconTex.tga";auto id=tile.id;
+        auto path=nx::isHomebrew(tile.id)?tile.path:"fs:"+tile.path+"/meta/iconTex.tga";auto id=tile.id;
         iconRead=std::async(std::launch::async,[path,id] {
             IconRead result;result.id=id;
+            if(nx::isHomebrew(id)) {result.bytes=nx::homebrewIcon(path);return result;}
             uint8_t *bytes=nullptr;uint32_t size=0;
             if(FSUtils::LoadFileToMem(path.c_str(),&bytes,&size,1024*1024)>0 && nx::validIconTga(bytes,size))
                 result.bytes.assign(bytes,bytes+size);
@@ -599,7 +614,7 @@ void MainWindow::rebuildView() {
         FILE *file=std::fopen(path,"r");
         if(file) {unsigned long long id;unsigned day;while(recent.size()<512 && std::fscanf(file,"%llx %u",&id,&day)==2) {recent.push_back(id);localDays[id]=day;}std::fclose(file);}
     }
-    uint64_t id=restore.titleId ? restore.titleId:visible.empty()?0:selectedTile().id;
+    uint64_t id=restore.titleId ? restore.titleId:visible.empty()||selected>=visible.size()||visible[selected]>=tiles.size()?0:selectedTile().id;
     visible.clear();
     for(size_t i=0;i<tiles.size();++i) if(nx::matches(tiles[i].name,query)) visible.push_back(i);
     // Cache ranks once per rebuild, not a linear history scan per comparison.
@@ -621,9 +636,10 @@ void MainWindow::rebuildView() {
         }
         return nx::titleBefore(tiles[a].name,tiles[a].id,tiles[b].name,tiles[b].id,sortMode);
     });
-    selected=0;
-    if(loaded) for(size_t i=0;i<visible.size();++i) if(tiles[visible[i]].id==id) {selected=i;restore.titleId=0;}
-    scroll=nx::scrollTarget(selected);viewDirty=false;
+    selected=nx::selectionAfterRefresh(visible,id,userNavigated,[this](size_t index){return tiles[index].id;});
+    restore.titleId=0;
+    if(!dragging) scroll=nx::scrollTarget(selected);
+    viewDirty=false;
     libraryStatus.setTextf("%u software   /   %s%s",unsigned(visible.size()),nx::sortName(sortMode),!loaded ? "   /   Loading...":query.empty()?"":"   /   Filter active (B: clear)");
 }
 void MainWindow::searchKey(int key) {

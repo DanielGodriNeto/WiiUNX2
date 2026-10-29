@@ -4,6 +4,11 @@
 #include <algorithm>
 #include <cstdint>
 namespace nx {
+template<class Items,class Id>
+inline size_t selectionAfterRefresh(const Items &items,uint64_t selectedId,bool interacted,Id id) {
+    if(interacted) for(size_t i=0;i<items.size();++i) if(id(items[i])==selectedId) return i;
+    return 0;
+}
 inline std::string searchKey(const std::string &s) {
     std::string out;
     for(size_t i=0;i<s.size();++i) {

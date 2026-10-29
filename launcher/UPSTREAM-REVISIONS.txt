@@ -1,4 +1,6 @@
 # WiiUNX2 upstream revisions used for the 0.3 prototype
+librpxloader https://github.com/wiiu-env/librpxloader 7b055f15f2c0e31af5b0a4ceda44ecb1ec39cc34 (added for 0.6.6 test)
+libwuhbutils https://github.com/wiiu-env/libwuhbutils e303bd14d67d9861491a8e9b3323b4d2d06e0e7e (added for 0.6.6 test)
 launchiine https://github.com/wiiu-env/launchiine bd31cbe4f4487851e6a2aa79ad30fba5b73107d3
 libgui https://github.com/wiiu-env/libgui 62e2655b725d0a4af43f147063bdbea2aa05e6b1
 homebrew_on_menu_plugin (research only) https://github.com/wiiu-env/homebrew_on_menu_plugin c3b6d06301ba97f479da6227c8dd95bbda01d29f
