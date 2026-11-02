@@ -415,14 +415,19 @@ void MainWindow::handleInput(GuiController *c) {
     uint32_t directions=c->data.buttons_h & (T::BUTTON_LEFT|T::BUTTON_RIGHT|T::STICK_L_LEFT|T::STICK_L_RIGHT);
     unsigned channel=std::min(4,std::max(0,c->chanIdx));
     if(directions!=heldDirection[channel]) { repeat[channel]=0; heldDirection[channel]=directions; }
-    if(directions && (++repeat[channel]==1 || (repeat[channel]>22 && repeat[channel]%6==0))) {
+    if(directions && nx::shouldRepeat(++repeat[channel])) {
         move(directions&(T::BUTTON_LEFT|T::STICK_L_LEFT) ? -1:1);
     }
     if(pressed & (T::BUTTON_DOWN|T::STICK_L_DOWN)) focusRow=focusRow==2 ? 0:1;
     if(pressed & (T::BUTTON_UP|T::STICK_L_UP)) focusRow=focusRow==1 ? 0:2;
     if(pressed&T::BUTTON_B) {if(focusRow!=0||!query.empty())requestSound(MenuSound::Back);focusRow=0;if(!query.empty()){query.clear();rebuildView();}}
-    if(pressed&T::BUTTON_L) move(-4);
-    if(pressed&T::BUTTON_R) move(4);
+    // Hold-to-accelerate for L/R: initial press moves four tiles, then
+    // repeats after an initial delay and accelerates while held.
+    uint32_t lr=c->data.buttons_h & (T::BUTTON_L|T::BUTTON_R);
+    if(lr!=heldLR[channel]) { repeatLR[channel]=0; heldLR[channel]=lr; }
+    if(lr && nx::shouldRepeat(++repeatLR[channel])) {
+        move(lr&T::BUTTON_L ? -4:4);
+    }
     if(pressed&T::BUTTON_PLUS) showOptions();
     if(pressed&T::BUTTON_A) activate();
 }

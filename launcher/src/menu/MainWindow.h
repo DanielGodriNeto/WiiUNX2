@@ -123,5 +123,7 @@ private:
     uint64_t heartbeatTicks=0;
     unsigned frame = 0, launchFrame = 0, repeat[5] = {};
     uint32_t heldDirection[5] = {};
+    unsigned repeatLR[5] = {};
+    uint32_t heldLR[5] = {};
     int width, height;
 };

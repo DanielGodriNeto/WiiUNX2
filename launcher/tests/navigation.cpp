@@ -20,6 +20,14 @@ int main() {
     assert(nx::hitDock(999,560)==8);
     assert(nx::hitDock(1000,560)==-1);
     for(int i=0;i<nx::dockCount;++i) assert(nx::hitDock(nx::dockFirst+i*nx::dockStep,560)==i);
+    assert(nx::shouldRepeat(1));
+    assert(!nx::shouldRepeat(2));
+    assert(!nx::shouldRepeat(22));
+    assert(nx::shouldRepeat(24));
+    assert(!nx::shouldRepeat(25));
+    assert(nx::shouldRepeat(60));
+    assert(!nx::shouldRepeat(61));
+    assert(nx::shouldRepeat(63));
     for(auto id:nx::tviiTitles) assert(nx::isTvii(id));
     assert(!nx::isTvii(0x0005001010040100ULL));
     assert(!nx::isTvii(0x000500301001310bULL));

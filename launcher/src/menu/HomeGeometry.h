@@ -26,4 +26,13 @@ inline int hitDock(float x,float y) {
     if(y<520 || y>600 || x<dockLeft || x>=dockLeft+dockCount*dockStep) return -1;
     return int((x-dockLeft)/dockStep);
 }
+// Hold-to-accelerate repeat decision. Returns true when the held frame
+// count should trigger a move: immediately on frame 1, then at a moderate
+// rate after an initial delay, accelerating after sustained holding.
+inline bool shouldRepeat(unsigned frames) {
+    if(frames==1) return true;
+    if(frames<=22) return false;
+    if(frames>60) return frames%3==0;
+    return frames%6==0;
+}
 }
