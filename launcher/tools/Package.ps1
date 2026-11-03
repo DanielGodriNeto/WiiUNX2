@@ -46,13 +46,13 @@ foreach($name in @('ppc-freetype','ppc-harfbuzz','ppc-libgd','ppc-libpng','ppc-l
     Copy-Item -LiteralPath "C:/devkitPro/portlibs/ppc/licenses/$name" -Destination $licenses -Recurse
 }
 @{
-    version="$Version-experimental"; binarySHA256=$hash
+    version="$Version"; binarySHA256=$hash
     binaryBytes=(Get-Item (Join-Path $package 'men.rpx')).Length
-    checks=@('devkitPPC/wut RPX cross-compilation passed','History replacement/failure/backup-recovery host tests passed on 2026-10-29')
-    regressionBaseline='Loading-selection and stable homebrew identifier regression tests passed for 0.6.6; unchanged selection behavior was not retested for the startup optimization.'
+    checks=@('devkitPPC/wut RPX cross-compilation passed','Hold-to-accelerate navigation host tests passed on 2026-11-02','Navigation and touch-boundary regression passed')
+    regressionBaseline='Host tests for navigation repeat boundaries and touch bounds passed.'
     consoleTested=$false; emulatorTested=$false
     installEnvironment='existing environment or optional aroma-wiiunx2'; pluginsIncluded=$false
     previousHardwareResult='User reports tested 0.6.8 functionality works; supplied logs reviewed'
-    currentHardwareResult='In-process installed-title name reuse on applet return awaits hardware timing validation'
+    currentHardwareResult='Hold-to-accelerate navigation implemented; awaits hardware validation on console'
 } | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $package 'build-report.json')
 Write-Host "Staged $package"
