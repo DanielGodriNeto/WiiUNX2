@@ -23,4 +23,5 @@ for(const name of ['navigation','library','stability','rounded','loading-selecti
   run(executable,args);console.log(`PASS ${name}`);
 }
 run(process.execPath,['--test','launcher/tests/sounds.mjs']);
+run(process.execPath,['--test','launcher/tests/version.mjs']);
 console.log('All host tests passed. Hardware behavior is not covered.');

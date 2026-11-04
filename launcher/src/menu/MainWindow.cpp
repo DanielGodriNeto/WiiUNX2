@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cmath>
+#include "common/common.h"
 extern "C" int32_t ACPCheckTitleLaunchByTitleListTypeEx(MCPTitleListType*,uint32_t);
 
 static const char *dockNames[] = {"Friend List", "Internet Browser", "Download Management", "Nintendo eShop", "Mii Maker", "Data Management", "Controllers", "System Settings", "Power"};
@@ -686,7 +687,7 @@ void MainWindow::showOptions() {
         if(focusRow==0 && !visible.empty()) {
             char id[32]; snprintf(id,sizeof(id),"%016llX",(unsigned long long)selectedTile().id);
             showMessage(selectedTile().name+"\n\nTitle ID: "+id+"\n"+selectedTile().path);
-        } else showMessage("WiiUNX2 0.6.10 experimental\n\nD-pad / stick: select   A: open   B: back\nL / R: skip four titles\nTouch once to select, again to open");
+        } else showMessage("WiiUNX2 " WIIUNX2_VERSION " experimental\n\nD-pad / stick: select   A: open   B: back\nL / R: skip four titles\nTouch once to select, again to open");
 }
 
 void MainWindow::drawFooter(CVideo *v) {drawPrompts(v,prompts,1224,674);}
