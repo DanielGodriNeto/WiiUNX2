@@ -26,4 +26,5 @@ const bleedFilter=path.join(output,'edgebleed-filter'+(process.platform==='win32
 run(compiler,['-std=c++17','-Wall','-Wextra',path.join(root,'launcher/tests/edgebleed-filter.cpp'),'-o',bleedFilter]);
 run(process.execPath,['launcher/tests/edgebleed-assets.mjs',bleedFilter,output]);console.log('PASS edgebleed-assets');
 run(process.execPath,['--test','launcher/tests/sounds.mjs']);
+run(process.execPath,['--test','launcher/tests/version.mjs']);
 console.log('All host tests passed. Hardware behavior is not covered.');
