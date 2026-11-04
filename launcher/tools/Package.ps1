@@ -1,4 +1,9 @@
-param([string]$Version='0.6.2')
+param([string]$Version=$(
+    $header=Get-Content -LiteralPath (Join-Path $PSScriptRoot '../src/common/common.h') -Raw
+    $match=[regex]::Match($header,'(?m)^#define WIIUNX2_VERSION\s+"(\d+\.\d+\.\d+)"')
+    if(!$match.Success) { throw 'WIIUNX2_VERSION not found in launcher/src/common/common.h' }
+    $match.Groups[1].Value
+))
 $ErrorActionPreference='Stop'
 $workspace=Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $package=Join-Path $workspace "dist/WiiUNX2-menu-v$Version"
