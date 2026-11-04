@@ -12,7 +12,7 @@ function run(command,args) {
   if(result.error) throw result.error;
   if(result.status!==0) throw Error(`${path.basename(command)} failed (${result.status??result.signal})`);
 }
-for(const name of ['navigation','library','stability','rounded','loading-selection','homebrew-policy','history-save']) {
+for(const name of ['navigation','library','stability','rounded','edgebleed','loading-selection','homebrew-policy','history-save']) {
   const executable=path.join(output,name+(process.platform==='win32'?'.exe':''));
   run(compiler,['-std=c++17','-Wall','-Wextra','-I',path.join(root,'launcher/src'),path.join(root,`launcher/tests/${name}.cpp`),'-o',executable]);
   let args=[];
@@ -22,5 +22,8 @@ for(const name of ['navigation','library','stability','rounded','loading-selecti
   }
   run(executable,args);console.log(`PASS ${name}`);
 }
+const bleedFilter=path.join(output,'edgebleed-filter'+(process.platform==='win32'?'.exe':''));
+run(compiler,['-std=c++17','-Wall','-Wextra',path.join(root,'launcher/tests/edgebleed-filter.cpp'),'-o',bleedFilter]);
+run(process.execPath,['launcher/tests/edgebleed-assets.mjs',bleedFilter,output]);console.log('PASS edgebleed-assets');
 run(process.execPath,['--test','launcher/tests/sounds.mjs']);
 console.log('All host tests passed. Hardware behavior is not covered.');

@@ -19,7 +19,7 @@ The published checkout is self-contained. In the original development workspace,
 - utils/AtomicHistory.h: temporary-file write, backup rotation, best-effort recovery. Host tests do not prove resilience to physical SD failure or arbitrary power loss.
 - MenuMusic.cpp/.h: original background loop and optional locally supplied UI effects; missing effects are skipped. Audio buffers/voices are released during foreground loss.
 - resources/: generated asset table. Do not commit generated filelist.h.
-- dependencies/libgui: modified renderer/font/image library; texture validation, UTF-8 and rounded alpha changes are part of the project and must ship as source.
+- dependencies/libgui: modified renderer/font/image library; texture validation, UTF-8, rounded alpha and transparent-texel colour bleed (EdgeBleed.h, applied to RGBA8 textures during conversion) are part of the project and must ship as source.
 - dependencies/librpxloader and libwuhbutils: official LGPL Aroma client libraries. Runtime modules come from the user's environment, not this source distribution.
 - launcher/tools/: original image/music generators, optional audio importer, host checks and packaging commands.
 - launcher/licenses/ and THIRD-PARTY.md: font licensing and dependency attribution. UPSTREAM-REVISIONS.txt records starting revisions.

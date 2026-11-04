@@ -16,6 +16,7 @@
  ****************************************************************************/
 
 #include <gui/GuiImageData.h>
+#include <gui/EdgeBleed.h>
 #include <gui/RoundedCorners.h>
 #include <gui/memory.h>
 #include <malloc.h>
@@ -169,6 +170,8 @@ void GuiImageData::loadImage(const uint8_t *img, int32_t imgSize, GX2TexClampMod
         default:
         case GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8:
             gdImageToUnormR8G8B8A8(gdImg, (uint32_t *) texture->surface.image, texture->surface.width, texture->surface.height, texture->surface.pitch);
+            //! Returns false only for geometry the loader already rejected; the texture then keeps its raw colours.
+            nx::bleedTransparentRgba(static_cast<uint32_t *>(texture->surface.image), texture->surface.imageSize / sizeof(uint32_t), texture->surface.width, texture->surface.height, texture->surface.pitch);
             break;
         case GX2_SURFACE_FORMAT_UNORM_R5_G6_B5:
             gdImageToUnormR5G6B5(gdImg, (uint16_t *) texture->surface.image, texture->surface.width, texture->surface.height, texture->surface.pitch);
