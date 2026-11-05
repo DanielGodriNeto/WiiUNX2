@@ -2,6 +2,7 @@
 #include "MainWindow.h"
 #include "HomeGeometry.h"
 #include "Library.h"
+#include "DiscState.h"
 #include "game/SystemTitles.h"
 #include "game/Homebrew.h"
 #include "utils/AtomicHistory.h"
@@ -34,14 +35,14 @@ static const char *dockFiles[] = {"nxFriends.png", "nxBrowser.png", "nxDownloads
 static const char *keys="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 static bool isMenu(uint64_t id) { return (id >> 32) == 0x00050010 && ((id & 0xffffff00) == 0x10040000 || (id & 0xffffff00) == 0x10040100 || (id & 0xffffff00) == 0x10040200); }
 static constexpr uint64_t discTileId=0xfffffffffffffffeULL;
-static bool readDisc(MCPTitleListType &title) {
+static nx::DiscSample readDisc(MCPTitleListType &title) {
     alignas(64) MCPTitleListType entries[4]{};uint32_t count=0;
-    int handle=MCP_Open();if(handle<0) return false;
+    int handle=MCP_Open();if(handle<0) return nx::DiscSample::error();
     auto result=MCP_TitleListByDeviceType(handle,MCP_DEVICE_TYPE_ODD,&count,entries,sizeof(entries));
     MCP_Close(handle);
-    if(result<0 || count>4) return false;
-    for(uint32_t i=0;i<count;++i) if(entries[i].appType==MCP_APP_TYPE_GAME) {title=entries[i];return true;}
-    return false;
+    if(result<0 || count>4) return nx::DiscSample::error();
+    for(uint32_t i=0;i<count;++i) if(entries[i].appType==MCP_APP_TYPE_GAME) {title=entries[i];return nx::DiscSample::game(entries[i].titleId);}
+    return count>0?nx::DiscSample::other():nx::DiscSample::empty();
 }
 
 MainWindow::MainWindow(int32_t w, int32_t h, MenuMusic *sound)
@@ -198,11 +199,12 @@ void MainWindow::process() {
             }
             DEBUG_FUNCTION_LINE("Metadata scan finished in %llu ms",(unsigned long long)OSTicksToMilliseconds(OSGetSystemTime()-began));
             loaderDone=true;
-            uint64_t previous=0;
+            nx::DiscMonitor monitor;
             while(!stopLoader) {
                 MCPTitleListType disc{};
-                uint64_t current=readDisc(disc)?disc.titleId:0;
-                if(current!=previous) {
+                const auto action=monitor.update(readDisc(disc));
+                const uint64_t current=monitor.current();
+                if(action!=nx::DiscAction::None) {
                     gameInfo update{};update.titleId=discTileId;update.appType=MCP_APP_TYPE_GAME;update.launchId=current;
                     if(current) {
                         update.name="Wii U Disc";update.gamePath=nx::bounded(disc.path,sizeof(disc.path));
@@ -213,9 +215,9 @@ void MainWindow::process() {
                         }
                         free(xml);
                     }
-                    std::lock_guard<std::mutex> guard(pendingMutex);pending.push_back(update);previous=current;
+                    std::lock_guard<std::mutex> guard(pendingMutex);pending.push_back(update);
                 }
-                for(int i=0;i<20 && !stopLoader;++i) OSSleepTicks(OSMillisecondsToTicks(100));
+                for(unsigned waited=0;waited<monitor.pollDelayMs() && !stopLoader;waited+=100) OSSleepTicks(OSMillisecondsToTicks(100));
             }
         });
     }
