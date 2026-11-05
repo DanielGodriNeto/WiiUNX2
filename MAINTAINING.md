@@ -59,3 +59,7 @@ For private diagnostics create an empty wiiu/wiiunx2-debug.enabled on SD and res
 When returning from an applet, compare first-title and total-metadata timings against first load. Test cold boots, title launch/return, disc swaps, search/sort/touch, user changes and recent history through reboot. Do not deliberately interrupt power during a write. Prioritize observed failures and measured bottlenecks over speculative optimizations.
 
 Next: hardware-validate the return cache/privacy default/fallback font; consider bounded validated persistent metadata for full restarts; profile frame pacing before animation changes; verify installer/recovery; review all visual/asset provenance and prepare a release candidate. Overall legal clearance, exhaustive security testing and 1.0 readiness are not established.
+
+## Icon loading
+
+menu/IconPlan.h decides which tile icons stay resident and in what order they load: the on-screen cards of the current and target scroll position plus a directional prefetch window (6 ahead, 2 behind, 2 each way at rest), capped at 20 resident, with on-screen cards never dropped. MainWindow::loadVisibleIcons applies it; one read stays in flight and one texture is uploaded per frame. The margins and cap are unmeasured defaults; tune them on hardware. launcher/tests/icon-plan.cpp covers the rules and a frame model of the loader (a model, not a hardware measurement).
