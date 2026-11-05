@@ -17,9 +17,11 @@ test('pause menu takes its version from WIIUNX2_VERSION, not a literal',()=>{
   assert.doesNotMatch(source,/"[^"\n]*\d+\.\d+\.\d+[^"\n]*"/);
 });
 test('packaging default and SD message do not hardcode a version',()=>{
-  const packaging=read('launcher/tools/Package.ps1');
-  assert.doesNotMatch(packaging,/param\(\[string\]\$Version='\d+\.\d+\.\d+'\)/);
-  assert.match(packaging,/common\.h/);
-  assert.match(packaging,/WIIUNX2_VERSION/);
+  const wrapper=read('launcher/tools/Package.ps1');
+  assert.doesNotMatch(wrapper,/\d+\.\d+\.\d+/);
+  assert.doesNotMatch(wrapper,/common\.h/);
+  const packager=read('launcher/tools/Package-Release.mjs');
+  assert.match(packager,/WIIUNX2_VERSION/);
+  assert.match(packager,/common\.h/);
   assert.doesNotMatch(read('launcher/Update-SD.ps1'),/\d+\.\d+\.\d+/);
 });
