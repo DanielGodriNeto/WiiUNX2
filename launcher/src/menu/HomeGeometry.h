@@ -11,6 +11,7 @@ inline int hitAccount(float x,float y,int page,int count) {
     return column<6 && index<count && local-column*164<=148 ? index:-1;
 }
 constexpr int tileSize=256, tileStep=272, tileLeft=104, tileY=330;
+constexpr int tileFirstX=232, cullLeft=-140, cullRight=1420;
 inline int moveSelection(int selected,int delta,int count) {
     return count<=0 ? 0 : std::max(0,std::min(count-1,selected+delta));
 }

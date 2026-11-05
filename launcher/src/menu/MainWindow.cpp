@@ -1,6 +1,7 @@
 // WiiUNX2, GPL-3.0-or-later. Original menu implementation for launchiine.
 #include "MainWindow.h"
 #include "HomeGeometry.h"
+#include "IconPlan.h"
 #include "Library.h"
 #include "DiscState.h"
 #include "game/SystemTitles.h"
@@ -237,7 +238,7 @@ void MainWindow::process() {
     float target=dragging?scroll:nx::scrollTarget(selected);
     scroll+=(target-scroll)*.22f;
     if(std::fabs(target-scroll)<.1f) scroll=target;
-    loadVisibleIcons();
+    loadVisibleIcons(target);
     if(frame%600==0) {
         size_t resident=0;for(const auto &tile:tiles) if(tile.image) ++resident;
         DEBUG_FUNCTION_LINE("Menu alive: titles=%u resident-icons=%u metadata-ready=%u",unsigned(tiles.size()),unsigned(resident),unsigned(loaded));
@@ -278,8 +279,8 @@ void MainWindow::draw(CVideo *v) {
     if(focusRow==0) drawText(title,v,640,166);
     size_t count=std::max(size_t(5),visible.size());
     for(size_t i=0;i<count;++i) {
-        float x=232+i*272.f-scroll;
-        if(x < -140 || x > 1420) continue;
+        float x=nx::tileFirstX+i*float(nx::tileStep)-scroll;
+        if(x < nx::cullLeft || x > nx::cullRight) continue;
         drawImage(*tileShadow,v,x,330);
         if(i==selected && focusRow==0 && !visible.empty()) drawImage(*tileFocus,v,x,330);
         if(i<visible.size() && tiles[visible[i]].image) drawImage(*tiles[visible[i]].image,v,x,330);
@@ -518,12 +519,11 @@ void MainWindow::markPlayed(uint64_t id) {
     if(!nx::saveHistory(path,recent,localDays)) DEBUG_FUNCTION_LINE("Recent history save failed; previous file retained");
     viewDirty=true;
 }
-void MainWindow::loadVisibleIcons() {
+void MainWindow::loadVisibleIcons(float target) {
+    // Keep the on-screen cards plus a directional prefetch window; the plan is bounded (see IconPlan.h).
+    const nx::IconPlan plan=nx::planIcons(int(visible.size()),scroll,target);
     std::vector<bool> needed(tiles.size(),false);
-    for(size_t pos=0;pos<visible.size();++pos) {
-        float x=232+pos*272.f-scroll;
-        if(x>=-140 && x<=1420) needed[visible[pos]]=true;
-    }
+    for(int pos:plan.keep) needed[visible[pos]]=true;
     for(size_t i=0;i<tiles.size();++i) if(!needed[i]) {
         tiles[i].image.reset();tiles[i].data.reset();tiles[i].attempted=false;
     }
@@ -544,7 +544,7 @@ void MainWindow::loadVisibleIcons() {
         }
     }
     if(iconRead.valid()) return;
-    for(size_t pos=0;pos<visible.size();++pos) {
+    for(int pos:plan.loadOrder) {
         auto i=visible[pos];auto &tile=tiles[i];
         if(!needed[i] || tile.attempted || tile.path.empty()) continue;
         tile.attempted=true;

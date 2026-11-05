@@ -50,7 +50,7 @@ private:
     void openAccounts();
     void selectAccount();
     void drawAccounts(CVideo *video);
-    void loadVisibleIcons();
+    void loadVisibleIcons(float target);
     void titleChanged(gameInfo *info);
     void listChanged(GameList *list);
     void draw(CVideo *v);
