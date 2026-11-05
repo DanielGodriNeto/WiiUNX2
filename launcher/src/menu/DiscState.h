@@ -24,15 +24,12 @@ public:
         if(invalid) { if(errors<1000) ++errors; return DiscAction::None; }
         errors=0;
         if(sample.kind==DiscSample::Game) return seeGame(sample.titleId);
-        other=sample.kind==DiscSample::Other;
         if(id==0) return DiscAction::None;
         if(++misses<removalSamples) return DiscAction::None;
         id=0;misses=0;
         return DiscAction::Removed;
     }
     uint64_t current() const { return id; }
-    // True while the last valid sample showed a disc that is not a Wii U game (for example a Wii disc).
-    bool unsupportedDiscPresent() const { return other; }
     // Poll delay: constant while samples are valid, doubling per consecutive error up to a cap.
     unsigned pollDelayMs() const {
         unsigned delay=baseDelayMs;
@@ -41,7 +38,7 @@ public:
     }
 private:
     DiscAction seeGame(uint64_t gameId) {
-        misses=0;other=false;
+        misses=0;
         if(gameId==id) return DiscAction::None;
         const DiscAction action=id==0?DiscAction::Inserted:DiscAction::Changed;
         id=gameId;
@@ -50,6 +47,5 @@ private:
     uint64_t id=0;
     unsigned misses=0;
     unsigned errors=0;
-    bool other=false;
 };
 }

@@ -34,17 +34,13 @@ int main() {
       CHECK(m.current()==2);
       DiscMonitor n;CHECK(n.update(DiscSample::game(0))==DiscAction::None);CHECK(n.current()==0);
     }
-    { DiscMonitor m; // non-game disc: no tile, flagged as unsupported; replaces a game after two samples
+    { DiscMonitor m; // non-game disc: no tile; replaces a game after two samples
       CHECK(m.update(DiscSample::other())==DiscAction::None);
-      CHECK(m.unsupportedDiscPresent());
       CHECK(m.current()==0);
       m.update(DiscSample::game(3));
-      CHECK(!m.unsupportedDiscPresent());
       CHECK(m.update(DiscSample::other())==DiscAction::None);
       CHECK(m.update(DiscSample::other())==DiscAction::Removed);
-      CHECK(m.unsupportedDiscPresent());
       CHECK(m.update(DiscSample::empty())==DiscAction::None);
-      CHECK(!m.unsupportedDiscPresent());
     }
     { DiscMonitor m; // poll delay backs off on errors, is capped, and resets on a valid sample
       CHECK(m.pollDelayMs()==2000);

@@ -1,14 +1,14 @@
 # Disc detection
 
-The menu polls the optical drive (`MCP_TitleListByDeviceType`, device `ODD`) from the metadata worker thread once loading has finished. The decision logic is in `launcher/src/menu/DiscState.h` (`nx::DiscMonitor`), a pure state machine covered by `launcher/tests/disc-state.cpp`. Only the thin reader in `MainWindow.cpp` (`readDisc`) talks to the console API.
+The menu polls the optical drive (`MCP_TitleListByDeviceType`, device `ODD`) from the metadata worker thread once loading has finished. The decision logic is in `launcher/src/menu/DiscState.h` (`nx::DiscMonitor`), a pure state machine covered by `launcher/tests/disc-state.cpp`. The thin reader in `MainWindow.cpp` (`readDisc`) talks to the console API, and the loop reads `meta.xml` from the SD/disc file system; neither is host-tested.
 
-## Rules (proven by host tests on synthetic samples)
+## Rules (the state machine is proven by host tests on synthetic samples)
 
 | Sample | Meaning | Effect |
 |---|---|---|
 | Game, title ID not 0 | Wii U game disc | First one is reported as Inserted at once (as before); a different ID is Changed |
-| Empty | Drive list has no entries | Removed after 2 consecutive samples (about 4 s). A single empty sample is ignored |
-| Other | Entries exist but none is a Wii U game (for example an app type other than `MCP_APP_TYPE_GAME`) | Treated like Empty for the tile; `unsupportedDiscPresent()` is true |
+| Empty | Drive list has no entries | Removed after 2 consecutive samples (2 to 4 s by the code, not measured on hardware). A single empty sample is ignored |
+| Other | Entries exist but none is a Wii U game (for example an app type other than `MCP_APP_TYPE_GAME`) | Treated like Empty for the tile (the state machine does not report it separately; no UI shows it) |
 | Error | MCP open failed, call returned an error, or more than 4 entries | State unchanged. The poll delay doubles per consecutive error, 2 s up to 16 s, and resets on a valid sample |
 | Game with title ID 0 | Invalid | Treated like an error |
 

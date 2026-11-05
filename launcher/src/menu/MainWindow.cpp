@@ -462,7 +462,7 @@ void MainWindow::launch(uint64_t id) {
     }
     if(id==discTileId) {
         MCPTitleListType disc{};
-        if(!readDisc(disc)) {showMessage("Insert a readable Wii U game disc and try again.");return;}
+        if(readDisc(disc).kind!=nx::DiscSample::Game) {showMessage("Insert a readable Wii U game disc and try again.");return;}
         ACPAssignTitlePatch(&disc);markPlayed(disc.titleId);launching=true;launchFrame=frame;
         _SYSLaunchTitleByPathFromLauncher(disc.path,0);return;
     }
