@@ -40,11 +40,11 @@ Install devkitPro's Wii U toolchain and required portlibs for FreeType/HarfBuzz/
 
 Noto Sans Regular is a pinned unmodified OFL fallback; the console's shared font remains preferred. Preserve the font hash/license in THIRD-PARTY.md. Original procedural music is included. Optional user-provided effects require the user's own rights; the importer grants none. See SOUNDS.md.
 
-Release version: set `WIIUNX2_VERSION` in `launcher/src/common/common.h` in the release commit. The pause menu and the default `-Version` of `launcher/tools/Package.ps1` read that single define; `launcher/Update-SD.ps1` prints no version. `launcher/tests/version.mjs` fails if any of these reintroduce a hardcoded version. Package directories are named `dist/WiiUNX2-menu-v<version>`, and existing git tags mix `v`-prefixed and bare names, so check the tag you create.
+Release version: set `WIIUNX2_VERSION` in `launcher/src/common/common.h` in the release commit. The pause menu and `launcher/tools/Package-Release.mjs` read that single define (`Package.ps1` forwards to it); `launcher/Update-SD.ps1` prints no version. `launcher/tests/version.mjs` fails if any of these reintroduce a hardcoded version. Release archives are named `WiiUNX2-menu-v<version>.zip`, and existing git tags mix `v`-prefixed and bare names, so check the tag you create.
 
 Run the commands in HOST-VALIDATION.md before compiling in the publishing checkout. The publication checker rejects generated artifacts; build a separate copy for cross-compilation. The manual source-validation workflow checks source exclusions, host tests and source archive creation. It has read-only permissions and does not deploy or publish binaries. Its checkout must include full reachable history for the history audit.
 
-Do not use the old Dockerfile toolchain as a verified recipe: it predates current dependencies. Legacy Package.ps1/SD scripts were written for customized local packages with extra files; source-only packaging is the command in HOST-VALIDATION.md. Validate distribution layout/recovery separately before recommending installation. Installation belongs on SD in the selected Aroma environment with backups; never overwrite NAND menu titles.
+Do not use the old Dockerfile toolchain as a verified recipe: it predates current dependencies. Release packages are built only by `launcher/tools/Package-Release.mjs`; see the Release packaging section in HOST-VALIDATION.md. Validate distribution layout/recovery separately before recommending installation. Installation belongs on SD in the selected Aroma environment with backups; never overwrite NAND menu titles.
 
 ## Validation and current status
 
