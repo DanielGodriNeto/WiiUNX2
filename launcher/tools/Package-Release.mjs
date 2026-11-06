@@ -438,11 +438,24 @@ function canonicalPath(file) {
   return process.platform === 'win32' ? real.replaceAll('\\', '/').toLowerCase() : real;
 }
 
+function canonicalGitPath(file) {
+  if (process.platform !== 'win32') return canonicalPath(file);
+  const cygdrive = file.match(/^\/(?:cygdrive\/)?([a-z])\/(.*)$/i);
+  if (cygdrive) return canonicalPath(`${cygdrive[1]}:/${cygdrive[2]}`);
+  const msysHome = file.match(/^\/home\/([^/]+)(\/.*)?$/i);
+  const userProfile = process.env.USERPROFILE;
+  if (msysHome && userProfile &&
+      path.basename(userProfile).toLowerCase() === msysHome[1].toLowerCase()) {
+    return canonicalPath(path.join(userProfile, (msysHome[2] || '').replaceAll('/', path.sep)));
+  }
+  return canonicalPath(file);
+}
+
 function isGitTopLevel(root) {
   const top = git(root, ['rev-parse', '--show-toplevel']);
   if (top === null) return false;
   try {
-    return canonicalPath(top.trim()) === canonicalPath(root);
+    return canonicalGitPath(top.trim()) === canonicalPath(root);
   } catch {
     return false;
   }
