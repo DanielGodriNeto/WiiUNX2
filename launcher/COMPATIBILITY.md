@@ -27,3 +27,9 @@ The user reports no more crashes with 0.4. Version 0.5 adds CPU-only loading wor
 TVii now has installed-title discovery for all three regional IDs and uses SYSAPP_PFID_TVII for launching. RosePatcher remains responsible for its network/service patches; the launcher does not install or configure it. The TVii route and returning to this menu require hardware validation. UI effects use a second AX voice; audio handoff with plugins also needs validation.
 
 Version 0.6.1 keeps TVii only in the software row, removes its dock shortcut, and retains the system launch operation required for TVii.
+
+## Current release-candidate test notes
+
+On the current testing build (last recorded build label: 0.6.11), the user reports that Wii U game discs work on a Wii U running system version 5.5.6 with Aroma plugins active. The exact insertion, removal, and disc-swap cases were not separately documented. Installed-title launch results were mixed: Super Smash Bros. for Wii U and Kirby Wii U Game launched; Meme Run and Bridge Constructor hung at the Wii U loading screen and did not recover during the observed attempts. Repeatability and stock-menu behavior remain untested. Mii Maker launched through a separate system-application path.
+
+Do not treat this candidate as a general compatibility guarantee. Issue #17 tracks the unresolved title-launch hangs. The keyboard repeat change, optional generated UI cues, and icon-prefetch behavior also await explicit hardware validation.

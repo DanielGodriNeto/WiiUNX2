@@ -5,6 +5,13 @@ horizontal software row, touch navigation, search, sorting, user selection,
 disc discovery and homebrew launching. It is not affiliated with, endorsed by
 or sponsored by Nintendo.
 
+The v0.6.12 release candidate does not bundle Nintendo firmware, game files,
+console system files, or recorded Nintendo audio. Its optional UI cues are
+original synthetic sounds generated without reference recordings. Game icons
+are read from software installed on the user's console and are not distributed.
+This statement does not establish legal clearance for the overall UI design or
+inherited upstream assets; no legal outcome is guaranteed.
+
 ## Documentation map
 
 - [MAINTAINING.md](MAINTAINING.md): architecture, lifecycle rules, build

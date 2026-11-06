@@ -342,10 +342,20 @@ void MainWindow::handleInput(GuiController *c) {
     if(searchOpen) {
         if(pressed&(T::BUTTON_B|T::BUTTON_PLUS)) { searchOpen=false;requestSound(MenuSound::Back); return; }
         if(pressed&T::BUTTON_X) {searchKey(37);return;}
-        if(pressed&(T::BUTTON_LEFT|T::STICK_L_LEFT)) keyboardIndex=nx::keyMove(keyboardIndex,-1,0);
-        if(pressed&(T::BUTTON_RIGHT|T::STICK_L_RIGHT)) keyboardIndex=nx::keyMove(keyboardIndex,1,0);
-        if(pressed&(T::BUTTON_UP|T::STICK_L_UP)) keyboardIndex=nx::keyMove(keyboardIndex,0,-1);
-        if(pressed&(T::BUTTON_DOWN|T::STICK_L_DOWN)) keyboardIndex=nx::keyMove(keyboardIndex,0,1);
+        unsigned channel=std::min(4,std::max(0,c->chanIdx));
+        uint32_t directions=c->data.buttons_h & (T::BUTTON_LEFT|T::BUTTON_RIGHT|T::BUTTON_UP|T::BUTTON_DOWN|
+                                                  T::STICK_L_LEFT|T::STICK_L_RIGHT|T::STICK_L_UP|T::STICK_L_DOWN);
+        if(directions!=keyboardHeldDirection[channel]) {
+            keyboardRepeat[channel]=0;
+            keyboardHeldDirection[channel]=directions;
+        }
+        if(directions && nx::shouldRepeat(++keyboardRepeat[channel])) {
+            int dx=(directions&(T::BUTTON_LEFT|T::STICK_L_LEFT))?-1:
+                   (directions&(T::BUTTON_RIGHT|T::STICK_L_RIGHT))?1:0;
+            int dy=(directions&(T::BUTTON_UP|T::STICK_L_UP))?-1:
+                   (directions&(T::BUTTON_DOWN|T::STICK_L_DOWN))?1:0;
+            keyboardIndex=nx::keyMove(keyboardIndex,dx,dy);
+        }
         bool click=(c->chanIdx==0 && c->data.touched && !c->lastData.touched) || (c->chanIdx!=0 && c->data.validPointer && (pressed&T::BUTTON_A));
         if(click) {int key=nx::keyHit(c->data.x+640,360-c->data.y);if(key>=0) {keyboardIndex=key;searchKey(key);} else {int i=hitPrompt(searchPrompts,c->data.x+640,360-c->data.y,584);if(i==1) searchKey(37);else if(i==2||i==3){searchOpen=false;requestSound(MenuSound::Back);}else if(i==4) searchKey(keyboardIndex);}}
         else if(pressed&T::BUTTON_A) searchKey(keyboardIndex);
