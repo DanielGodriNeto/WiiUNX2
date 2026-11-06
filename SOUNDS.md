@@ -1,10 +1,18 @@
-# Optional user-supplied UI sounds
+# Optional UI sound effects
 
 No Nintendo sound recordings are distributed in this repository. Navigation, click and back effects are optional; missing files are skipped by the current launcher.
 
-Use only audio you have permission to use. The importer accepts WAV files named `Select.wav`, `Klick.wav`, and `Enter & Back.wav` for navigation, confirm and back. These can be your own original recordings with those filenames.
+Use only audio you have permission to use. The importer accepts WAV files named `Select.wav`, `Klick.wav`, and `Enter & Back.wav` for navigation, confirm and back. These can be your own original recordings with those filenames. To create a distinct synthetic set without any reference recordings, run:
 
-From the `launcher` directory, run:
+    python launcher/tools/Generate-Original-Sounds.py
+
+This writes WAVs under `launcher/build/original-ui-cues/`. Import them from the `launcher` directory:
+
+    node tools/Import-Sounds.mjs "build/original-ui-cues"
+
+The synthetic cues are generated from simple oscillator parameters with distinct envelopes; the generator does not read or use reference recordings.
+
+For other original WAVs, from the `launcher` directory run:
 
     node tools/Import-Sounds.mjs "PATH_TO_YOUR_WAV_FOLDER"
 

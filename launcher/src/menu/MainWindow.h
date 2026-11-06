@@ -50,7 +50,7 @@ private:
     void openAccounts();
     void selectAccount();
     void drawAccounts(CVideo *video);
-    void loadVisibleIcons();
+    void loadVisibleIcons(float target);
     void titleChanged(gameInfo *info);
     void listChanged(GameList *list);
     void draw(CVideo *v);
@@ -123,6 +123,8 @@ private:
     uint64_t heartbeatTicks=0;
     unsigned frame = 0, launchFrame = 0, repeat[5] = {};
     uint32_t heldDirection[5] = {};
+    unsigned keyboardRepeat[5] = {};
+    uint32_t keyboardHeldDirection[5] = {};
     unsigned repeatLR[5] = {};
     uint32_t heldLR[5] = {};
     int width, height;

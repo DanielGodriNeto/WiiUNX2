@@ -1,7 +1,9 @@
 // WiiUNX2, GPL-3.0-or-later. Original menu implementation for launchiine.
 #include "MainWindow.h"
 #include "HomeGeometry.h"
+#include "IconPlan.h"
 #include "Library.h"
+#include "DiscState.h"
 #include "game/SystemTitles.h"
 #include "game/Homebrew.h"
 #include "utils/AtomicHistory.h"
@@ -34,14 +36,14 @@ static const char *dockFiles[] = {"nxFriends.png", "nxBrowser.png", "nxDownloads
 static const char *keys="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 static bool isMenu(uint64_t id) { return (id >> 32) == 0x00050010 && ((id & 0xffffff00) == 0x10040000 || (id & 0xffffff00) == 0x10040100 || (id & 0xffffff00) == 0x10040200); }
 static constexpr uint64_t discTileId=0xfffffffffffffffeULL;
-static bool readDisc(MCPTitleListType &title) {
+static nx::DiscSample readDisc(MCPTitleListType &title) {
     alignas(64) MCPTitleListType entries[4]{};uint32_t count=0;
-    int handle=MCP_Open();if(handle<0) return false;
+    int handle=MCP_Open();if(handle<0) return nx::DiscSample::error();
     auto result=MCP_TitleListByDeviceType(handle,MCP_DEVICE_TYPE_ODD,&count,entries,sizeof(entries));
     MCP_Close(handle);
-    if(result<0 || count>4) return false;
-    for(uint32_t i=0;i<count;++i) if(entries[i].appType==MCP_APP_TYPE_GAME) {title=entries[i];return true;}
-    return false;
+    if(result<0 || count>4) return nx::DiscSample::error();
+    for(uint32_t i=0;i<count;++i) if(entries[i].appType==MCP_APP_TYPE_GAME) {title=entries[i];return nx::DiscSample::game(entries[i].titleId);}
+    return count>0?nx::DiscSample::other():nx::DiscSample::empty();
 }
 
 MainWindow::MainWindow(int32_t w, int32_t h, MenuMusic *sound)
@@ -198,11 +200,12 @@ void MainWindow::process() {
             }
             DEBUG_FUNCTION_LINE("Metadata scan finished in %llu ms",(unsigned long long)OSTicksToMilliseconds(OSGetSystemTime()-began));
             loaderDone=true;
-            uint64_t previous=0;
+            nx::DiscMonitor monitor;
             while(!stopLoader) {
                 MCPTitleListType disc{};
-                uint64_t current=readDisc(disc)?disc.titleId:0;
-                if(current!=previous) {
+                const auto action=monitor.update(readDisc(disc));
+                const uint64_t current=monitor.current();
+                if(action!=nx::DiscAction::None) {
                     gameInfo update{};update.titleId=discTileId;update.appType=MCP_APP_TYPE_GAME;update.launchId=current;
                     if(current) {
                         update.name="Wii U Disc";update.gamePath=nx::bounded(disc.path,sizeof(disc.path));
@@ -213,9 +216,9 @@ void MainWindow::process() {
                         }
                         free(xml);
                     }
-                    std::lock_guard<std::mutex> guard(pendingMutex);pending.push_back(update);previous=current;
+                    std::lock_guard<std::mutex> guard(pendingMutex);pending.push_back(update);
                 }
-                for(int i=0;i<20 && !stopLoader;++i) OSSleepTicks(OSMillisecondsToTicks(100));
+                for(unsigned waited=0;waited<monitor.pollDelayMs() && !stopLoader;waited+=100) OSSleepTicks(OSMillisecondsToTicks(100));
             }
         });
     }
@@ -235,7 +238,7 @@ void MainWindow::process() {
     float target=dragging?scroll:nx::scrollTarget(selected);
     scroll+=(target-scroll)*.22f;
     if(std::fabs(target-scroll)<.1f) scroll=target;
-    loadVisibleIcons();
+    loadVisibleIcons(target);
     if(frame%600==0) {
         size_t resident=0;for(const auto &tile:tiles) if(tile.image) ++resident;
         DEBUG_FUNCTION_LINE("Menu alive: titles=%u resident-icons=%u metadata-ready=%u",unsigned(tiles.size()),unsigned(resident),unsigned(loaded));
@@ -276,8 +279,8 @@ void MainWindow::draw(CVideo *v) {
     if(focusRow==0) drawText(title,v,640,166);
     size_t count=std::max(size_t(5),visible.size());
     for(size_t i=0;i<count;++i) {
-        float x=232+i*272.f-scroll;
-        if(x < -140 || x > 1420) continue;
+        float x=nx::tileFirstX+i*float(nx::tileStep)-scroll;
+        if(x < nx::cullLeft || x > nx::cullRight) continue;
         drawImage(*tileShadow,v,x,330);
         if(i==selected && focusRow==0 && !visible.empty()) drawImage(*tileFocus,v,x,330);
         if(i<visible.size() && tiles[visible[i]].image) drawImage(*tiles[visible[i]].image,v,x,330);
@@ -339,10 +342,20 @@ void MainWindow::handleInput(GuiController *c) {
     if(searchOpen) {
         if(pressed&(T::BUTTON_B|T::BUTTON_PLUS)) { searchOpen=false;requestSound(MenuSound::Back); return; }
         if(pressed&T::BUTTON_X) {searchKey(37);return;}
-        if(pressed&(T::BUTTON_LEFT|T::STICK_L_LEFT)) keyboardIndex=nx::keyMove(keyboardIndex,-1,0);
-        if(pressed&(T::BUTTON_RIGHT|T::STICK_L_RIGHT)) keyboardIndex=nx::keyMove(keyboardIndex,1,0);
-        if(pressed&(T::BUTTON_UP|T::STICK_L_UP)) keyboardIndex=nx::keyMove(keyboardIndex,0,-1);
-        if(pressed&(T::BUTTON_DOWN|T::STICK_L_DOWN)) keyboardIndex=nx::keyMove(keyboardIndex,0,1);
+        unsigned channel=std::min(4,std::max(0,c->chanIdx));
+        uint32_t directions=c->data.buttons_h & (T::BUTTON_LEFT|T::BUTTON_RIGHT|T::BUTTON_UP|T::BUTTON_DOWN|
+                                                  T::STICK_L_LEFT|T::STICK_L_RIGHT|T::STICK_L_UP|T::STICK_L_DOWN);
+        if(directions!=keyboardHeldDirection[channel]) {
+            keyboardRepeat[channel]=0;
+            keyboardHeldDirection[channel]=directions;
+        }
+        if(directions && nx::shouldRepeat(++keyboardRepeat[channel])) {
+            int dx=(directions&(T::BUTTON_LEFT|T::STICK_L_LEFT))?-1:
+                   (directions&(T::BUTTON_RIGHT|T::STICK_L_RIGHT))?1:0;
+            int dy=(directions&(T::BUTTON_UP|T::STICK_L_UP))?-1:
+                   (directions&(T::BUTTON_DOWN|T::STICK_L_DOWN))?1:0;
+            keyboardIndex=nx::keyMove(keyboardIndex,dx,dy);
+        }
         bool click=(c->chanIdx==0 && c->data.touched && !c->lastData.touched) || (c->chanIdx!=0 && c->data.validPointer && (pressed&T::BUTTON_A));
         if(click) {int key=nx::keyHit(c->data.x+640,360-c->data.y);if(key>=0) {keyboardIndex=key;searchKey(key);} else {int i=hitPrompt(searchPrompts,c->data.x+640,360-c->data.y,584);if(i==1) searchKey(37);else if(i==2||i==3){searchOpen=false;requestSound(MenuSound::Back);}else if(i==4) searchKey(keyboardIndex);}}
         else if(pressed&T::BUTTON_A) searchKey(keyboardIndex);
@@ -460,7 +473,7 @@ void MainWindow::launch(uint64_t id) {
     }
     if(id==discTileId) {
         MCPTitleListType disc{};
-        if(!readDisc(disc)) {showMessage("Insert a readable Wii U game disc and try again.");return;}
+        if(readDisc(disc).kind!=nx::DiscSample::Game) {showMessage("Insert a readable Wii U game disc and try again.");return;}
         ACPAssignTitlePatch(&disc);markPlayed(disc.titleId);launching=true;launchFrame=frame;
         _SYSLaunchTitleByPathFromLauncher(disc.path,0);return;
     }
@@ -516,12 +529,11 @@ void MainWindow::markPlayed(uint64_t id) {
     if(!nx::saveHistory(path,recent,localDays)) DEBUG_FUNCTION_LINE("Recent history save failed; previous file retained");
     viewDirty=true;
 }
-void MainWindow::loadVisibleIcons() {
+void MainWindow::loadVisibleIcons(float target) {
+    // Keep the on-screen cards plus a directional prefetch window; the plan is bounded (see IconPlan.h).
+    const nx::IconPlan plan=nx::planIcons(int(visible.size()),scroll,target);
     std::vector<bool> needed(tiles.size(),false);
-    for(size_t pos=0;pos<visible.size();++pos) {
-        float x=232+pos*272.f-scroll;
-        if(x>=-140 && x<=1420) needed[visible[pos]]=true;
-    }
+    for(int pos:plan.keep) needed[visible[pos]]=true;
     for(size_t i=0;i<tiles.size();++i) if(!needed[i]) {
         tiles[i].image.reset();tiles[i].data.reset();tiles[i].attempted=false;
     }
@@ -542,7 +554,7 @@ void MainWindow::loadVisibleIcons() {
         }
     }
     if(iconRead.valid()) return;
-    for(size_t pos=0;pos<visible.size();++pos) {
+    for(int pos:plan.loadOrder) {
         auto i=visible[pos];auto &tile=tiles[i];
         if(!needed[i] || tile.attempted || tile.path.empty()) continue;
         tile.attempted=true;
