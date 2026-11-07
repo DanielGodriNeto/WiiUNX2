@@ -36,13 +36,14 @@ static const char *dockFiles[] = {"nxFriends.png", "nxBrowser.png", "nxDownloads
 static const char *keys="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 static bool isMenu(uint64_t id) { return (id >> 32) == 0x00050010 && ((id & 0xffffff00) == 0x10040000 || (id & 0xffffff00) == 0x10040100 || (id & 0xffffff00) == 0x10040200); }
 static constexpr uint64_t discTileId=0xfffffffffffffffeULL;
-static nx::DiscSample readDisc(MCPTitleListType &title) {
+static nx::DiscSample readDisc(MCPTitleListType &title,uint32_t *otherType=nullptr) {
     alignas(64) MCPTitleListType entries[4]{};uint32_t count=0;
     int handle=MCP_Open();if(handle<0) return nx::DiscSample::error();
     auto result=MCP_TitleListByDeviceType(handle,MCP_DEVICE_TYPE_ODD,&count,entries,sizeof(entries));
     MCP_Close(handle);
     if(result<0 || count>4) return nx::DiscSample::error();
     for(uint32_t i=0;i<count;++i) if(entries[i].appType==MCP_APP_TYPE_GAME) {title=entries[i];return nx::DiscSample::game(entries[i].titleId);}
+    if(count>0 && otherType) *otherType=uint32_t(entries[0].appType);
     return count>0?nx::DiscSample::other():nx::DiscSample::empty();
 }
 
@@ -201,9 +202,15 @@ void MainWindow::process() {
             DEBUG_FUNCTION_LINE("Metadata scan finished in %llu ms",(unsigned long long)OSTicksToMilliseconds(OSGetSystemTime()-began));
             loaderDone=true;
             nx::DiscMonitor monitor;
+            uint32_t lastOtherType=0;
             while(!stopLoader) {
                 MCPTitleListType disc{};
-                const auto action=monitor.update(readDisc(disc));
+                uint32_t otherType=0;
+                const auto sample=readDisc(disc,&otherType);
+                // Log an unsupported disc's app type once per change, so a Wii disc can be identified on hardware.
+                if(sample.kind==nx::DiscSample::Other && otherType!=lastOtherType) DEBUG_FUNCTION_LINE("Unsupported disc entry, app type 0x%08X",unsigned(otherType));
+                lastOtherType=sample.kind==nx::DiscSample::Other?otherType:0;
+                const auto action=monitor.update(sample);
                 const uint64_t current=monitor.current();
                 if(action!=nx::DiscAction::None) {
                     gameInfo update{};update.titleId=discTileId;update.appType=MCP_APP_TYPE_GAME;update.launchId=current;
