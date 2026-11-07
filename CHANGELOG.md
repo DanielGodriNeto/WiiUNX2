@@ -1,5 +1,16 @@
 # WiiUNX2 changelog
 
+## 0.6.12-rc.2 — Release candidate
+
+- Replace the optional synthetic UI tones with shorter, sharper procedural click cues for navigation, confirm, and back.
+- Validate the click generator for deterministic output, duration, and sample bounds.
+
+### Validation and known limitations
+
+- Host tests and release packaging pass; Wii U RPX rebuilt with the generated cues.
+- The revised sounds still need listening validation on Wii U hardware. This prerelease does not claim that they match any specific console UI sounds.
+- No Nintendo firmware, game files, console system files, or recorded Nintendo audio are included.
+
 ## 0.6.12-rc.1 — Release candidate
 
 - Add faster held D-pad/left-stick navigation in the search keyboard.
