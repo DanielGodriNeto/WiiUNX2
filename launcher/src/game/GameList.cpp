@@ -3,6 +3,7 @@
 #include "Metadata.h"
 #include "SystemTitles.h"
 #include "Homebrew.h"
+#include "NameCache.h"
 #include "fs/FSUtils.h"
 #include "utils/logger.h"
 #include <nn/acp/title.h>
@@ -10,11 +11,19 @@
 #include <cstdio>
 #include <cstring>
 #include <memory>
-#include <unordered_map>
 namespace {
-struct CachedName {std::string path,name;uint32_t version;};
 // CPU strings only. The loader is joined before a replacement menu is created.
-std::unordered_map<uint64_t,CachedName> names;
+nx::NameMap names;
+bool namesLoaded=false;
+// Same SD directory as the recent-history file written by MainWindow::markPlayed.
+const char *const nameCachePath="fs:/vol/external01/wiiu/wiiunx2-names.cache";
+// Loader thread only. Read once before the first use. A missing or corrupt file starts empty; the next save rotates it to .bak.
+void ensureNamesLoaded() {
+    if(namesLoaded) return;
+    namesLoaded=true;
+    nx::StdioFiles files;
+    if(!nx::loadNameCache(files,nameCachePath,names)) DEBUG_FUNCTION_LINE("Name cache unavailable; starting empty");
+}
 }
 
 GameList::GameList() {}
@@ -86,6 +95,7 @@ bool GameList::loadNext() {
     if(nx::isHomebrew(info->titleId)) {
         info->name=nx::homebrewName(info->gamePath);titleUpdated(info);return nextMetadata>=fullGameList.size();
     }
+    ensureNamesLoaded();
     auto cached=names.find(info->titleId);
     if(cached!=names.end()&&cached->second.path==info->gamePath&&cached->second.version==info->titleVersion) {
         info->name=cached->second.name;titleUpdated(info);return nextMetadata>=fullGameList.size();
@@ -119,4 +129,10 @@ bool GameList::loadNext() {
     }
     titleUpdated(info);
     return nextMetadata>=fullGameList.size();
+}
+// Loader thread only, after loadNext has run for every title. Entries are kept across runs and capped by the format.
+void GameList::saveNameCache() {
+    ensureNamesLoaded();
+    nx::StdioFiles files;
+    if(!nx::saveNameCache(files,nameCachePath,names)) DEBUG_FUNCTION_LINE("Name cache save failed; previous file retained");
 }

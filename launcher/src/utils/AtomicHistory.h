@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <cstdint>
 #include <sys/stat.h>
+#include "SyncFile.h"
 namespace nx {
 inline bool saveHistory(const std::string &path,const std::vector<uint64_t> &titles,const std::unordered_map<uint64_t,uint32_t> &days) {
     const auto temporary=path+".tmp";
@@ -19,7 +20,7 @@ inline bool saveHistory(const std::string &path,const std::vector<uint64_t> &tit
         auto day=days.find(id);
         if(std::fprintf(file,"%016llX %u\n",(unsigned long long)id,day==days.end()?0u:day->second)<0) {ok=false;break;}
     }
-    if(std::fflush(file)!=0) ok=false;
+    if(!syncFile(file)) ok=false;
     if(std::fclose(file)!=0) ok=false;
     if(ok) {
         if(!exists && std::rename(temporary.c_str(),path.c_str())==0) {std::remove(backup.c_str());return true;}
