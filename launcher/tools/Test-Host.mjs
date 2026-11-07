@@ -12,7 +12,7 @@ function run(command,args) {
   if(result.error) throw result.error;
   if(result.status!==0) throw Error(`${path.basename(command)} failed (${result.status??result.signal})`);
 }
-for(const name of ['navigation','library','stability','rounded','edgebleed','loading-selection','homebrew-policy','history-save','reconcile','metadata-cache','disc-state','icon-plan']) {
+for(const name of ['navigation','library','stability','rounded','edgebleed','loading-selection','homebrew-policy','history-save','reconcile','metadata-cache','disc-state','icon-plan','launch-log']) {
   const executable=path.join(output,name+(process.platform==='win32'?'.exe':''));
   run(compiler,['-std=c++17','-Wall','-Wextra','-I',path.join(root,'launcher/src'),path.join(root,`launcher/tests/${name}.cpp`),'-o',executable]);
   let args=[];
@@ -22,6 +22,10 @@ for(const name of ['navigation','library','stability','rounded','edgebleed','loa
   }
   if(name==='metadata-cache') {
     const fixture=path.join(output,'cache-fixture');fs.mkdirSync(path.join(fixture,'cache-directory'),{recursive:true});
+    args=[fixture.replaceAll('\\','/')];
+  }
+  if(name==='launch-log') {
+    const fixture=path.join(output,'launch-log');fs.mkdirSync(fixture,{recursive:true});
     args=[fixture.replaceAll('\\','/')];
   }
   run(executable,args);console.log(`PASS ${name}`);
