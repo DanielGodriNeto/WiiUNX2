@@ -16,24 +16,24 @@ int main(int argc,char **argv) {
     assert(argc==2);
     const std::string dir=argv[1];
     // Fixed format and sentinel names.
-    assert(nx::formatLaunchRecord(0x0005000E10102000ULL,"regular",3,0,nx::kLaunchUnavailable,"/usr/x")==
-        "launch 0005000E10102000 stage=regular type=3 patch=0 call=unavailable path=/usr/x");
-    assert(nx::formatLaunchRecord(1,"disc",0,nx::kLaunchNotCalled,nx::kLaunchUnavailable,"")==
-        "launch 0000000000000001 stage=disc type=0 patch=not-called call=unavailable path=");
+    assert(nx::formatLaunchRecord(0x0005000E10102000ULL,"regular",3,0,"/usr/x")==
+        "launch 0005000E10102000 stage=regular type=3 patch=0 path=/usr/x");
+    assert(nx::formatLaunchRecord(1,"disc",0,nx::kLaunchNotCalled,"")==
+        "launch 0000000000000001 stage=disc type=0 patch=not-called path=");
     // Hostile path: newline, NUL, CR, non-ASCII, spaces and 10 KB. Output must stay one short printable line.
     std::string hostile="a\nb";hostile.push_back('\0');
     hostile+=std::string("c\r\xC3\xA9 ");
     hostile+=std::string(10240,'x');
-    const std::string line=nx::formatLaunchRecord(0x0005000E10102000ULL,"regular",3,0,nx::kLaunchUnavailable,hostile);
+    const std::string line=nx::formatLaunchRecord(0x0005000E10102000ULL,"regular",3,0,hostile);
     assert(line.size()<=512);
     assert(line.find_first_of("\r\n")==std::string::npos);
     for(unsigned char c:line) assert(c>=0x20&&c<=0x7E);
     assert(line.size()>=96);
     assert(line.substr(line.size()-96)==std::string("a?b?c????")+std::string(87,'x'));
     // Oversized stage tag is also bounded.
-    const std::string longStage=nx::formatLaunchRecord(2,std::string(300,'s'),0,0,0,"p");
+    const std::string longStage=nx::formatLaunchRecord(2,std::string(300,'s'),0,0,"p");
     assert(longStage.size()<=512);
-    assert(nx::formatLaunchRecord(2,std::string(300,'s'),0,0,0,"p").find(" path=p")!=std::string::npos);
+    assert(nx::formatLaunchRecord(2,std::string(300,'s'),0,0,"p").find(" path=p")!=std::string::npos);
 
     // Marker gating: only a regular file enables logging.
     const std::string marker=dir+"/launch-log.enable";

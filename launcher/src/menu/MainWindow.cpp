@@ -467,7 +467,7 @@ constexpr const char *kLaunchLogFile="fs:/vol/external01/wiiu/wiiunx2-launch.log
 // Opt-in only. Called before the launch call, which may replace this process.
 void recordLaunch(const char *stage,uint64_t id,int appType,int patchResult,const char *path) {
     if(!nx::launchLogEnabled(kLaunchLogMarker)) return;
-    if(!nx::appendLaunchLog(kLaunchLogFile,nx::formatLaunchRecord(id,stage,appType,patchResult,nx::kLaunchUnavailable,path))) DEBUG_FUNCTION_LINE("Launch log append failed");
+    if(!nx::appendLaunchLog(kLaunchLogFile,nx::formatLaunchRecord(id,stage,appType,patchResult,path))) DEBUG_FUNCTION_LINE("Launch log append failed");
 }
 }
 void MainWindow::launch(uint64_t id) {

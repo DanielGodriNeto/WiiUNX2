@@ -7,7 +7,6 @@
 #include <sys/stat.h>
 namespace nx {
 constexpr int kLaunchNotCalled=INT_MIN;
-constexpr int kLaunchUnavailable=INT_MIN+1;
 constexpr size_t kLaunchLogPathMax=96;
 constexpr long kLaunchLogCapBytes=64*1024;
 
@@ -23,14 +22,13 @@ inline std::string sanitizeLaunchField(const std::string &text,size_t limit) {
 }
 inline std::string formatLaunchCode(int value) {
     if(value==kLaunchNotCalled) return "not-called";
-    if(value==kLaunchUnavailable) return "unavailable";
     return std::to_string(value);
 }
-// One line without a trailing newline. Bounded: at most 112 + 96 characters.
-inline std::string formatLaunchRecord(uint64_t titleId,const std::string &stage,int appType,int patchResult,int launchResult,const std::string &path) {
+// One line without a trailing newline. Bounded: at most 94 + 96 characters.
+inline std::string formatLaunchRecord(uint64_t titleId,const std::string &stage,int appType,int patchResult,const std::string &path) {
     char head[160];
-    std::snprintf(head,sizeof(head),"launch %016llX stage=%s type=%d patch=%s call=%s path=",(unsigned long long)titleId,
-        sanitizeLaunchField(stage,24).c_str(),appType,formatLaunchCode(patchResult).c_str(),formatLaunchCode(launchResult).c_str());
+    std::snprintf(head,sizeof(head),"launch %016llX stage=%s type=%d patch=%s path=",(unsigned long long)titleId,
+        sanitizeLaunchField(stage,24).c_str(),appType,formatLaunchCode(patchResult).c_str());
     return std::string(head)+sanitizeLaunchField(path,kLaunchLogPathMax);
 }
 inline bool launchLogEnabled(const std::string &markerPath) {
