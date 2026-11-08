@@ -1,6 +1,7 @@
 // WiiUNX2 GPL-3.0-or-later. Bounded, CRC-checked persistent name cache: format, validation and atomic file layer (host-tested).
 #pragma once
 #include "Metadata.h"
+#include "../utils/SyncFile.h"
 #include <algorithm>
 #include <cerrno>
 #include <cstdint>
@@ -246,9 +247,9 @@ inline bool StdioFiles::write(const std::string &path,const std::vector<uint8_t>
     FILE *file=std::fopen(path.c_str(),"wb");
     if(!file) return false;
     const bool written=std::fwrite(bytes.data(),1,bytes.size(),file)==bytes.size();
-    const bool flushed=std::fflush(file)==0;
+    const bool synced=syncFile(file);
     const bool closed=std::fclose(file)==0;
-    return written && flushed && closed;
+    return written && synced && closed;
 }
 
 // Publish a tmp file when nothing is at path. A stale backup is removed on a best-effort basis.

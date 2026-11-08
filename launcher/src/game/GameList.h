@@ -66,6 +66,7 @@ public:
     int32_t load();
     void loadHomebrew();
     bool loadNext();
+    void saveNameCache();
 
     sigslot::signal1<GameList *> titleListChanged;
     sigslot::signal1<gameInfo *> titleUpdated;

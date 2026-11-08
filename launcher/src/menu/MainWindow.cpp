@@ -3,6 +3,7 @@
 #include "HomeGeometry.h"
 #include "IconPlan.h"
 #include "Library.h"
+#include "Reconcile.h"
 #include "DiscState.h"
 #include "game/SystemTitles.h"
 #include "game/Homebrew.h"
@@ -202,6 +203,7 @@ void MainWindow::process() {
             }
             DEBUG_FUNCTION_LINE("Metadata scan finished in %llu ms",(unsigned long long)OSTicksToMilliseconds(OSGetSystemTime()-began));
             loaderDone=true;
+            gameList.saveNameCache();
             nx::DiscMonitor monitor;
             uint32_t lastOtherType=0;
             bool otherLogged=false;
@@ -544,7 +546,10 @@ void MainWindow::launch(uint64_t id) {
 }
 
 MainWindow::ViewState MainWindow::saveView() const {
-    return {0,0,0,sortMode,{}};
+    return {restore.titleId&&!userNavigated?restore.titleId:selectedTitleId(),0,0,sortMode,{}};
+}
+uint64_t MainWindow::selectedTitleId() const {
+    return visible.empty()||selected>=visible.size()||visible[selected]>=tiles.size()?0:selectedTile().id;
 }
 void MainWindow::markPlayed(uint64_t id) {
     recent.erase(std::remove(recent.begin(),recent.end(),id),recent.end());
@@ -671,7 +676,8 @@ void MainWindow::rebuildView() {
         FILE *file=nx::openHistory(path);
         if(file) {unsigned long long id;unsigned day;while(recent.size()<512 && std::fscanf(file,"%llx %u",&id,&day)==2) {recent.push_back(id);localDays[id]=day;}std::fclose(file);}
     }
-    uint64_t id=restore.titleId ? restore.titleId:visible.empty()||selected>=visible.size()||visible[selected]>=tiles.size()?0:selectedTile().id;
+    const uint64_t wanted=userNavigated?0:restore.titleId;
+    uint64_t id=wanted ? wanted:selectedTitleId();
     visible.clear();
     for(size_t i=0;i<tiles.size();++i) if(nx::matches(tiles[i].name,query)) visible.push_back(i);
     // Cache ranks once per rebuild, not a linear history scan per comparison.
@@ -693,8 +699,16 @@ void MainWindow::rebuildView() {
         }
         return nx::titleBefore(tiles[a].name,tiles[a].id,tiles[b].name,tiles[b].id,sortMode);
     });
-    selected=nx::selectionAfterRefresh(visible,id,userNavigated,[this](size_t index){return tiles[index].id;});
-    restore.titleId=0;
+    const auto tileId=[this](size_t index){return tiles[index].id;};
+    if(wanted && !userNavigated) {
+        // Keep the saved title selected; while metadata is still arriving, retry on each rebuild.
+        auto restored=nx::restoreSelection(visible,wanted,loaded,tileId);
+        selected=restored.index;
+        if(restored.settled) restore.titleId=0;
+    } else {
+        selected=nx::selectionAfterRefresh(visible,id,userNavigated,tileId);
+        restore.titleId=0;
+    }
     if(!dragging) scroll=nx::scrollTarget(selected);
     viewDirty=false;
     libraryStatus.setTextf("%u software   /   %s%s",unsigned(visible.size()),nx::sortName(sortMode),!loaded ? "   /   Loading...":query.empty()?"":"   /   Filter active (B: clear)");

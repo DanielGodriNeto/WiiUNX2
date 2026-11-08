@@ -79,6 +79,7 @@ private:
     void searchKey(int key);
     void drawSearch(CVideo *video);
     std::vector<size_t> visible;
+    uint64_t selectedTitleId() const;
     Tile &selectedTile() { return tiles[visible[selected]]; }
     const Tile &selectedTile() const { return tiles[visible[selected]]; }
     struct IconRead { uint64_t id=0; std::vector<uint8_t> bytes; };
