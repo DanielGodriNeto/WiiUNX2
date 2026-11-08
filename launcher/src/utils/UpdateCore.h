@@ -193,6 +193,7 @@ inline const Asset *findAssetNamed(const std::vector<Asset> &assets,const std::s
 }
 
 inline bool isAllowedHost(const std::string &host) {
+    // api.github.com serves the release metadata only, not the downloads. It is listed so the release check uses the same host validator.
     static const char *const kHosts[]={"github.com","objects.githubusercontent.com","release-assets.githubusercontent.com","api.github.com"};
     for(const char *allowed:kHosts) {
         if(host==allowed) return true;
@@ -297,6 +298,7 @@ inline SelectResult selectAssets(const Release &release,const std::string &curre
 }
 
 // First whitespace-delimited field must be exactly 64 hex digits; it is returned lowercase. The rest is ignored.
+// The file name is not checked, so the caller must pair this file with its zip.
 inline bool parseSha256File(const std::string &text,std::string &hex) {
     static const char *const kWhitespace=" \t\r\n\v\f";
     const size_t begin=text.find_first_not_of(kWhitespace);
