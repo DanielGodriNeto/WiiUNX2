@@ -68,24 +68,18 @@ Asset 'nxPower.png' 64 {
     param($g)
     $p=Pen '#727779' 2;$g.DrawArc($p,19,20,26,27,-55,290);$g.DrawLine($p,32,14,32,32);$p.Dispose()
 }
-foreach($button in @('B','X','L','R','Dpad')) {
+foreach($button in @('B','X','L','R')) {
     Asset ("nxButton"+$button+".png") 28 {
         param($g)
         $b=[Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#333333'));$g.FillEllipse($b,1,1,26,26);$b.Dispose()
-        if($button -eq 'Dpad') {
-            $g.FillRectangle([Drawing.Brushes]::White,7,12.5,14,3);$g.FillRectangle([Drawing.Brushes]::White,12.5,7,3,14)
-        } else {
-            $f=[Drawing.Font]::new('Arial',14,[Drawing.FontStyle]::Bold,[Drawing.GraphicsUnit]::Pixel)
-            $fmt=[Drawing.StringFormat]::new();$fmt.Alignment='Center';$fmt.LineAlignment='Center'
-            $g.DrawString($button,$f,[Drawing.Brushes]::White,[Drawing.PointF]::new(14,14.5),$fmt);$fmt.Dispose();$f.Dispose()
-        }
+        $f=[Drawing.Font]::new('Arial',14,[Drawing.FontStyle]::Bold,[Drawing.GraphicsUnit]::Pixel)
+        $fmt=[Drawing.StringFormat]::new();$fmt.Alignment='Center';$fmt.LineAlignment='Center'
+        $g.DrawString($button,$f,[Drawing.Brushes]::White,[Drawing.PointF]::new(14,14.5),$fmt);$fmt.Dispose();$f.Dispose()
     }
 }
 Asset 'nxButtonDpad.png' 28 {
     param($g)
     $b=[Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#333333'));$g.FillEllipse($b,1,1,26,26);$b.Dispose()
-    foreach($triangle in @(@(14,6,10,11,18,11),@(14,22,10,17,18,17),@(6,14,11,10,11,18),@(22,14,17,10,17,18))) {
-        $points=[Drawing.PointF[]]@([Drawing.PointF]::new($triangle[0],$triangle[1]),[Drawing.PointF]::new($triangle[2],$triangle[3]),[Drawing.PointF]::new($triangle[4],$triangle[5]))
-        $g.FillPolygon([Drawing.Brushes]::White,$points)
-    }
+    $g.FillRectangle([Drawing.Brushes]::White,6,11,16,6);$g.FillRectangle([Drawing.Brushes]::White,11,6,6,16)
+    $d=[Drawing.SolidBrush]::new([Drawing.ColorTranslator]::FromHtml('#333333'));$g.FillEllipse($d,12.5,12.5,3,3);$d.Dispose()
 }
