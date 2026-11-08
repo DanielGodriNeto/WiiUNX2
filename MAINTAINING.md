@@ -84,3 +84,12 @@ The existing `wiiu/wiiunx2-debug.enabled` diagnostics are separate; this marker 
 ## Icon loading
 
 menu/IconPlan.h decides which tile icons stay resident and in what order they load: the on-screen cards of the current and target scroll position plus a directional prefetch window (6 ahead, 2 behind, 2 each way at rest), capped at 20 resident, with on-screen cards never dropped. MainWindow::loadVisibleIcons applies it; one read stays in flight and one texture is uploaded per frame. The margins and cap are unmeasured defaults; tune them on hardware. launcher/tests/icon-plan.cpp covers the rules and a frame model of the loader (a model, not a hardware measurement).
+## In-app updater (issue #7): core only
+
+- Exists: `launcher/src/utils/UpdateCore.h`, header-only and pure. It parses versions and release JSON, checks download URLs and redirects, selects the `WiiUNX2-menu-v<version>.zip` and `.sha256` assets, parses checksum files, computes SHA-256, applies rate-limit waits and rejects unsafe archive paths. `launcher/tests/update-core.cpp` covers it on the host.
+- Does not exist: no update button, no network call, no download, no extraction and no install. Nothing is wired into MainWindow or Application. No updater exists on console yet.
+- TLS must come from libcurlwrapper on console. That is unverified; host tests cannot prove it.
+- GitHub rate limit is 60 requests per hour unauthenticated. Callers must back off using `rateLimitWaitSeconds`.
+- The release `digest` field may be null, so the `.sha256` asset is the hash the core compares against. It comes from the same release as the zip, so it proves integrity only, not authenticity: a signature or pinned key is still needed before any install step is wired.
+- Caller obligations the core cannot enforce: fetch the release JSON only from a pinned `api.github.com/repos/Wiirizon/WiiUNX2` URL (the URL allowlist is host-level), check every redirect hop with `isTrustedRedirect`, reject symlink or special zip entries during extraction, and keep the pre-release gate in mind (it uses the `prerelease` flag only).
+- The redirect host list (github.com, objects.githubusercontent.com, release-assets.githubusercontent.com, api.github.com) is inferred from observed downloads, not documented by GitHub.
