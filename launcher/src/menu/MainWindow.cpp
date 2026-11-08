@@ -203,13 +203,16 @@ void MainWindow::process() {
             loaderDone=true;
             nx::DiscMonitor monitor;
             uint32_t lastOtherType=0;
+            bool otherLogged=false;
             while(!stopLoader) {
                 MCPTitleListType disc{};
                 uint32_t otherType=0;
                 const auto sample=readDisc(disc,&otherType);
                 // Log an unsupported disc's app type once per change, so a Wii disc can be identified on hardware.
-                if(sample.kind==nx::DiscSample::Other && otherType!=lastOtherType) DEBUG_FUNCTION_LINE("Unsupported disc entry, app type 0x%08X",unsigned(otherType));
-                lastOtherType=sample.kind==nx::DiscSample::Other?otherType:0;
+                const bool unsupported=sample.kind==nx::DiscSample::Other;
+                if(unsupported && (!otherLogged || otherType!=lastOtherType)) DEBUG_FUNCTION_LINE("Unsupported disc entry, app type 0x%08X",unsigned(otherType));
+                otherLogged=unsupported;
+                lastOtherType=otherType;
                 const auto action=monitor.update(sample);
                 const uint64_t current=monitor.current();
                 if(action!=nx::DiscAction::None) {
