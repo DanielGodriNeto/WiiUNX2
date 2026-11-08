@@ -24,6 +24,8 @@ inline bool saveHistory(const std::string &path,const std::vector<uint64_t> &tit
     if(ok) {
         if(!exists && std::rename(temporary.c_str(),path.c_str())==0) {std::remove(backup.c_str());return true;}
         // CafeOS and Windows may reject rename over an existing destination.
+        // A backup left by an earlier crash would make the rename below fail forever on CafeOS and Windows.
+        if(exists) std::remove(backup.c_str());
         if(exists && std::rename(path.c_str(),backup.c_str())==0) {
             if(std::rename(temporary.c_str(),path.c_str())==0) {std::remove(backup.c_str());return true;}
             std::rename(backup.c_str(),path.c_str());
