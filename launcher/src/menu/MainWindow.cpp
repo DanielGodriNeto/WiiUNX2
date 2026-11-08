@@ -8,6 +8,7 @@
 #include "game/SystemTitles.h"
 #include "game/Homebrew.h"
 #include "utils/AtomicHistory.h"
+#include "utils/LaunchLog.h"
 #include <rpxloader/rpxloader.h>
 #include <tuple>
 #include "game/Metadata.h"
@@ -37,13 +38,14 @@ static const char *dockFiles[] = {"nxFriends.png", "nxBrowser.png", "nxDownloads
 static const char *keys="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 static bool isMenu(uint64_t id) { return (id >> 32) == 0x00050010 && ((id & 0xffffff00) == 0x10040000 || (id & 0xffffff00) == 0x10040100 || (id & 0xffffff00) == 0x10040200); }
 static constexpr uint64_t discTileId=0xfffffffffffffffeULL;
-static nx::DiscSample readDisc(MCPTitleListType &title) {
+static nx::DiscSample readDisc(MCPTitleListType &title,uint32_t *otherType=nullptr) {
     alignas(64) MCPTitleListType entries[4]{};uint32_t count=0;
     int handle=MCP_Open();if(handle<0) return nx::DiscSample::error();
     auto result=MCP_TitleListByDeviceType(handle,MCP_DEVICE_TYPE_ODD,&count,entries,sizeof(entries));
     MCP_Close(handle);
     if(result<0 || count>4) return nx::DiscSample::error();
     for(uint32_t i=0;i<count;++i) if(entries[i].appType==MCP_APP_TYPE_GAME) {title=entries[i];return nx::DiscSample::game(entries[i].titleId);}
+    if(count>0 && otherType) *otherType=uint32_t(entries[0].appType);
     return count>0?nx::DiscSample::other():nx::DiscSample::empty();
 }
 
@@ -203,9 +205,18 @@ void MainWindow::process() {
             loaderDone=true;
             gameList.saveNameCache();
             nx::DiscMonitor monitor;
+            uint32_t lastOtherType=0;
+            bool otherLogged=false;
             while(!stopLoader) {
                 MCPTitleListType disc{};
-                const auto action=monitor.update(readDisc(disc));
+                uint32_t otherType=0;
+                const auto sample=readDisc(disc,&otherType);
+                // Log an unsupported disc's app type once per change, so a Wii disc can be identified on hardware.
+                const bool unsupported=sample.kind==nx::DiscSample::Other;
+                if(unsupported && (!otherLogged || otherType!=lastOtherType)) DEBUG_FUNCTION_LINE("Unsupported disc entry, app type 0x%08X",unsigned(otherType));
+                otherLogged=unsupported;
+                lastOtherType=otherType;
+                const auto action=monitor.update(sample);
                 const uint64_t current=monitor.current();
                 if(action!=nx::DiscAction::None) {
                     gameInfo update{};update.titleId=discTileId;update.appType=MCP_APP_TYPE_GAME;update.launchId=current;
@@ -462,6 +473,15 @@ void MainWindow::activate() {
     for(auto &t:tiles) if(t.type==type) { launch(t.id); return; }
     showMessage(std::string(dockNames[dockIndex])+" is not installed or could not be found.");
 }
+namespace {
+constexpr const char *kLaunchLogMarker="fs:/vol/external01/wiiu/wiiunx2-launch-log.enable";
+constexpr const char *kLaunchLogFile="fs:/vol/external01/wiiu/wiiunx2-launch.log";
+// Opt-in only. Called before the launch call, which may replace this process.
+void recordLaunch(const char *stage,uint64_t id,int appType,int patchResult,const char *path) {
+    if(!nx::launchLogEnabled(kLaunchLogMarker)) return;
+    if(!nx::appendLaunchLog(kLaunchLogFile,nx::formatLaunchRecord(id,stage,appType,patchResult,path))) DEBUG_FUNCTION_LINE("Launch log append failed");
+}
+}
 void MainWindow::launch(uint64_t id) {
     if(nx::isHomebrew(id)) {
         auto tile=std::find_if(tiles.begin(),tiles.end(),[id](const auto &t){return t.id==id;});
@@ -476,7 +496,8 @@ void MainWindow::launch(uint64_t id) {
     if(id==discTileId) {
         MCPTitleListType disc{};
         if(readDisc(disc).kind!=nx::DiscSample::Game) {showMessage("Insert a readable Wii U game disc and try again.");return;}
-        ACPAssignTitlePatch(&disc);markPlayed(disc.titleId);launching=true;launchFrame=frame;
+        int32_t patchResult=ACPAssignTitlePatch(&disc);markPlayed(disc.titleId);launching=true;launchFrame=frame;
+        recordLaunch("disc",disc.titleId,disc.appType,patchResult,disc.path);
         _SYSLaunchTitleByPathFromLauncher(disc.path,0);return;
     }
     if((id>>32)==0x0005000f) {
@@ -488,6 +509,7 @@ void MainWindow::launch(uint64_t id) {
         DEBUG_FUNCTION_LINE("Aroma prepare %016llX result %d",(unsigned long long)id,result);
         if(result<0) {showMessage("Homebrew could not prepare. Enable Aroma's Homebrew on Menu plugin.");return;}
         markPlayed(id);launching=true;launchFrame=frame;
+        recordLaunch("homebrew-custom",id,homebrew.appType,nx::kLaunchNotCalled,homebrew.path);
         _SYSLaunchTitleByPathFromLauncher(homebrew.path,0);return;
     }
     DEBUG_FUNCTION_LINE("Launch requested %016llX",(unsigned long long)id);
@@ -508,13 +530,16 @@ void MainWindow::launch(uint64_t id) {
     case MCP_APP_TYPE_DOWNLOAD_MANAGEMENT: result=_SYSSwitchTo(SYSAPP_PFID_DOWNLOAD_MANAGEMENT); break;
     case MCP_APP_TYPE_FRIEND_LIST: result=_SYSSwitchTo(SYSAPP_PFID_FRIENDLIST); break;
     case MCP_APP_TYPE_MIIVERSE: result=_SYSSwitchTo(SYSAPP_PFID_MIIVERSE); break;
-    default:
-        ACPAssignTitlePatch(&info);
+    default: {
+        int32_t patchResult=ACPAssignTitlePatch(&info);
+        DEBUG_FUNCTION_LINE("Assign title patch %016llX result %d",(unsigned long long)id,int(patchResult));
         markPlayed(id);
         launching=true;
         launchFrame=frame;
+        recordLaunch("regular",id,info.appType,patchResult,info.path);
         SYSLaunchTitle(id);
         return;
+    }
     }
     if(result<0) showMessage("The system could not open this application.");
     return;

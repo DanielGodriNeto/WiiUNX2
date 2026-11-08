@@ -62,6 +62,34 @@ When returning from an applet, compare first-title and total-metadata timings ag
 
 Next: wire and hardware-validate persistent metadata if pursued; investigate the title-launch hangs; test keyboard repeat, optional sound cues, icon loading, disc removal/swaps, privacy defaults, fallback font, installer and recovery. Overall legal clearance, exhaustive security testing, plugin compatibility and 1.0 readiness are not established.
 
+## Launch hang diagnostics (issue #17)
+
+Issue #17 reports that some installed titles (Meme Run and Bridge Constructor) hang at the Wii U logo when launched from WiiUNX2. The cause is unknown and was not reproduced; the stock menu has not been tested. This opt-in logging only collects evidence. It does not fix hangs, and it has not been verified on hardware.
+
+Enable: create an empty file `wiiunx2-launch-log.enable` in `wiiu/` on the SD card (`fs:/vol/external01/wiiu/`). Delete it to stop logging. Nothing is written while it is absent.
+
+What is recorded: one line per launch from WiiUNX2 in `wiiu/wiiunx2-launch.log`, written just before the launch call. Each line holds the title ID, stage (`regular`, `disc`, `homebrew-custom`), app type, and the title patch result (`not-called` on the custom path), then the title's storage path. There is no launch result field: a successful call replaces this process and does not return to the menu, so an outcome cannot be recorded. The path keeps only `A-Z a-z 0-9 / _ . -` (other characters become `?`) and is cut at 96 characters. The file is truncated before the next write once it passes 64 KiB. It stays on the SD card and is never sent anywhere. Each line contains only these fields.
+
+To attach it to the issue: check the file first, then paste its contents or attach it as text. Each line should start with `launch `. Remove any line you do not want to share.
+
+Reporter checklist (please note each answer in the issue):
+- Launch the same title from the stock Wii U menu, not from WiiUNX2. Does it hang there too?
+- Repeat each launch 3 times, from WiiUNX2 and from the stock menu. Count the hangs.
+- List the Aroma plugins installed.
+- Storage: USB, internal MLC, or disc.
+- Whether the title has an update or DLC installed.
+
+The existing `wiiu/wiiunx2-debug.enabled` diagnostics are separate; this marker does not enable them.
+
 ## Icon loading
 
 menu/IconPlan.h decides which tile icons stay resident and in what order they load: the on-screen cards of the current and target scroll position plus a directional prefetch window (6 ahead, 2 behind, 2 each way at rest), capped at 20 resident, with on-screen cards never dropped. MainWindow::loadVisibleIcons applies it; one read stays in flight and one texture is uploaded per frame. The margins and cap are unmeasured defaults; tune them on hardware. launcher/tests/icon-plan.cpp covers the rules and a frame model of the loader (a model, not a hardware measurement).
+## In-app updater (issue #7): core only
+
+- Exists: `launcher/src/utils/UpdateCore.h`, header-only and pure. It parses versions and release JSON, checks download URLs and redirects, selects the `WiiUNX2-menu-v<version>.zip` and `.sha256` assets, parses checksum files, computes SHA-256, applies rate-limit waits and rejects unsafe archive paths. `launcher/tests/update-core.cpp` covers it on the host.
+- Does not exist: no update button, no network call, no download, no extraction and no install. Nothing is wired into MainWindow or Application. No updater exists on console yet.
+- TLS must come from libcurlwrapper on console. That is unverified; host tests cannot prove it.
+- GitHub rate limit is 60 requests per hour unauthenticated. Callers must back off using `rateLimitWaitSeconds`.
+- The release `digest` field may be null, so the `.sha256` asset is the hash the core compares against. It comes from the same release as the zip, so it proves integrity only, not authenticity: a signature or pinned key is still needed before any install step is wired.
+- Caller obligations the core cannot enforce: fetch the release JSON only from a pinned `api.github.com/repos/Wiirizon/WiiUNX2` URL (the URL allowlist is host-level), check every redirect hop with `isTrustedRedirect`, reject symlink or special zip entries during extraction, and keep the pre-release gate in mind (it uses the `prerelease` flag only).
+- The redirect host list (github.com, objects.githubusercontent.com, release-assets.githubusercontent.com, api.github.com) is inferred from observed downloads, not documented by GitHub.
