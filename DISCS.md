@@ -21,6 +21,8 @@ Disc metadata (`meta.xml`) is read only when the monitor reports Inserted or Cha
 - Cannot be determined without hardware: whether a Wii disc appears in the ODD title list at all, its `path` and `meta.xml` layout, whether `SYSLaunchTitle` or a path launch starts it, and how the stock menu hands over to Wii mode (which only exits by reboot). No claim of Wii disc support is made.
 - Other states not handled: dirty or unreadable discs (expected to appear as Error or Empty), a disc inserted while the drive is busy, discs of another region, and discs needing an update. The 2 s base interval is not proven to match stock timing.
 
+Diagnostics: when the drive lists an entry that is not a Wii U game, the debug log gets one line, `Unsupported disc entry, app type 0x...`, each time that app type changes. A maintainer with a Wii disc can read it to confirm whether it shows up with the `MCP_APP_TYPE_GAME_WII` value. The line is not written for every poll.
+
 ## Hardware checklist for the maintainer
 
 - [ ] Insert and eject a Wii U game disc: tile appears, then disappears about 4 s after eject.
