@@ -73,12 +73,27 @@ function makeFixture(work, rpxBytes = elfBytes()) {
   return {work, root, portlibs, validation, out: path.join(work, 'out')};
 }
 
+// Each test gets a private TMPDIR/TMP/TEMP, so other processes writing wiiunx2-release-* dirs cannot change the assertions.
+function useTempRoot(dir) {
+  const saved = {TMPDIR: process.env.TMPDIR, TMP: process.env.TMP, TEMP: process.env.TEMP};
+  for (const key of Object.keys(saved)) process.env[key] = dir;
+  return () => {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  };
+}
+
 async function withWork(run, rpxBytes) {
-  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'wiiunx2-release-test-'));
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'wiiunx2-test-tmp-'));
+  const restoreTemp = useTempRoot(tempRoot);
   try {
+    const work = fs.mkdtempSync(path.join(tempRoot, 'work-'));
     return await run(makeFixture(work, rpxBytes));
   } finally {
-    fs.rmSync(work, {recursive: true, force: true, maxRetries: 3});
+    restoreTemp();
+    fs.rmSync(tempRoot, {recursive: true, force: true, maxRetries: 3});
   }
 }
 

@@ -12,7 +12,7 @@ function run(command,args) {
   if(result.error) throw result.error;
   if(result.status!==0) throw Error(`${path.basename(command)} failed (${result.status??result.signal})`);
 }
-for(const name of ['navigation','library','stability','rounded','edgebleed','loading-selection','homebrew-policy','history-save','reconcile','metadata-cache','disc-state','icon-plan','update-core']) {
+for(const name of ['navigation','library','stability','rounded','edgebleed','loading-selection','homebrew-policy','history-save','reconcile','metadata-cache','disc-state','icon-plan','launch-log','update-core']) {
   const executable=path.join(output,name+(process.platform==='win32'?'.exe':''));
   run(compiler,['-std=c++17','-Wall','-Wextra','-I',path.join(root,'launcher/src'),path.join(root,`launcher/tests/${name}.cpp`),'-o',executable]);
   let args=[];
@@ -24,6 +24,10 @@ for(const name of ['navigation','library','stability','rounded','edgebleed','loa
     const fixture=path.join(output,'cache-fixture');fs.mkdirSync(path.join(fixture,'cache-directory'),{recursive:true});
     args=[fixture.replaceAll('\\','/')];
   }
+  if(name==='launch-log') {
+    const fixture=path.join(output,'launch-log');fs.mkdirSync(fixture,{recursive:true});
+    args=[fixture.replaceAll('\\','/')];
+  }
   run(executable,args);console.log(`PASS ${name}`);
 }
 const bleedFilter=path.join(output,'edgebleed-filter'+(process.platform==='win32'?'.exe':''));
@@ -31,5 +35,6 @@ run(compiler,['-std=c++17','-Wall','-Wextra',path.join(root,'launcher/tests/edge
 run(process.execPath,['launcher/tests/edgebleed-assets.mjs',bleedFilter,output]);console.log('PASS edgebleed-assets');
 run(process.execPath,['--test','launcher/tests/sounds.mjs']);
 run(process.execPath,['--test','launcher/tests/version.mjs']);
+run(process.execPath,['--test','launcher/tests/dpad-glyph.mjs']);
 run(process.execPath,['--test','launcher/tests/package-release.mjs']);
 console.log('All host tests passed. Hardware behavior is not covered.');
