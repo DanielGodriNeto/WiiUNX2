@@ -71,7 +71,7 @@ const char *StringTools::fmt(const char *format, ...) {
 
     va_list va;
     va_start(va, format);
-    if ((vsprintf(strChar, format, va) >= 0)) {
+    if ((vsnprintf(strChar, sizeof(strChar), format, va) >= 0)) {
         va_end(va);
         return (const char *) strChar;
     }
@@ -94,7 +94,9 @@ const wchar_t *StringTools::wfmt(const char *format, ...) {
 
     va_list va;
     va_start(va, format);
-    if ((vsprintf(tmp, format, va) >= 0)) {
+    int written = vsnprintf(tmp, sizeof(tmp), format, va);
+    va_end(va);
+    if (written >= 0) {
         int32_t bt;
         int32_t strlength = strlen(tmp);
         bt                = mbstowcs(strWChar, tmp, (strlength < 512) ? strlength : 512);
@@ -104,7 +106,6 @@ const wchar_t *StringTools::wfmt(const char *format, ...) {
             return (const wchar_t *) strWChar;
         }
     }
-    va_end(va);
 
     return nullptr;
 }
@@ -116,7 +117,7 @@ int32_t StringTools::strprintf(std::string &str, const char *format, ...) {
 
     va_list va;
     va_start(va, format);
-    if ((vsprintf(tmp, format, va) >= 0)) {
+    if ((vsnprintf(tmp, sizeof(tmp), format, va) >= 0)) {
         str    = tmp;
         result = str.size();
     }
@@ -132,7 +133,7 @@ std::string StringTools::strfmt(const char *format, ...) {
 
     va_list va;
     va_start(va, format);
-    if ((vsprintf(tmp, format, va) >= 0)) {
+    if ((vsnprintf(tmp, sizeof(tmp), format, va) >= 0)) {
         str = tmp;
     }
     va_end(va);
@@ -187,10 +188,14 @@ int32_t StringTools::strextcmp(const char *string, const char *extension, char s
 
 
 std::vector<std::string> StringTools::stringSplit(const std::string &inValue, const std::string &splitter) {
-    std::string value = inValue;
     std::vector<std::string> result;
+    if (splitter.empty()) {
+        result.push_back(inValue);
+        return result;
+    }
+    std::string value = inValue;
     while (true) {
-        uint32_t index = value.find(splitter);
+        size_t index = value.find(splitter);
         if (index == std::string::npos) {
             result.push_back(value);
             break;
