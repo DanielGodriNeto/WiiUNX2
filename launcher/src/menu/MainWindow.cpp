@@ -218,7 +218,10 @@ void MainWindow::process() {
                 lastOtherType=otherType;
                 const auto action=monitor.update(sample);
                 const uint64_t current=monitor.current();
-                if(action!=nx::DiscAction::None) {
+                // A pending notice is dropped once the disc is gone or replaced by a game; an Error sample keeps it.
+                if(sample.kind==nx::DiscSample::Empty || sample.kind==nx::DiscSample::Game) discUnsupportedNotice=false;
+                if(action==nx::DiscAction::Unsupported) discUnsupportedNotice=true;
+                else if(action!=nx::DiscAction::None) {
                     gameInfo update{};update.titleId=discTileId;update.appType=MCP_APP_TYPE_GAME;update.launchId=current;
                     if(current) {
                         update.name="Wii U Disc";update.gamePath=nx::bounded(disc.path,sizeof(disc.path));
@@ -247,6 +250,8 @@ void MainWindow::process() {
     loaded=finished;loadFailed=loaderFailed;
     if(viewDirty) rebuildView();
     if(launching && frame-launchFrame>600) { launching=false; showMessage("The launch did not complete. Try again or restart WiiUNX2."); }
+    // Show the Wii disc notice once, and only when no other message or launch is active; otherwise keep it pending.
+    if(!modal && !launching && discUnsupportedNotice.exchange(false)) showMessage("This disc cannot be launched from WiiUNX2. Wii discs are not supported yet.");
     // Keep the selection near the second card, with the next card peeking at the edge.
     float target=dragging?scroll:nx::scrollTarget(selected);
     scroll+=(target-scroll)*.22f;

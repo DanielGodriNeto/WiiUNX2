@@ -85,7 +85,7 @@ private:
     struct IconRead { uint64_t id=0; std::vector<uint8_t> bytes; };
     std::future<IconRead> iconRead;
     std::thread loader;
-    std::atomic<bool> stopLoader{false}, loaderDone{false}, loaderFailed{false};
+    std::atomic<bool> stopLoader{false}, loaderDone{false}, loaderFailed{false}, discUnsupportedNotice{false};
     std::mutex pendingMutex;
     std::vector<gameInfo> pending;
     bool viewDirty=false, searchOpen=false;
