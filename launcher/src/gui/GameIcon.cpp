@@ -1,14 +1,20 @@
 #include "GameIcon.h"
 #include "Application.h"
 #include "GameIconModel.h"
+#include "SelectionPulse.h"
 #include "utils/logger.h"
 #include "utils/utils.h"
+#include <coreinit/time.h>
 #include <gui/video/CVideo.h>
 #include <gui/video/shaders/Shader3D.h>
 #include <gui/video/shaders/ShaderFractalColor.h>
 
 static const float cfIconMirrorScale = 1.15f;
 static const float cfIconMirrorAlpha = 0.45f;
+
+static glm::vec4 pulseRgb(const glm::vec4 &color, float scale) {
+    return glm::vec4(color.x * scale, color.y * scale, color.z * scale, color.w);
+}
 
 GameIcon::GameIcon(GuiImageData *preloadImage)
     : GuiImage(preloadImage) {
@@ -223,6 +229,10 @@ void GameIcon::draw(CVideo *pVideo, const glm::mat4 &projectionMtx, const glm::m
         if (bSelected) {
             strokeFractalEnable = 0;
 
+            const float pulse                = selectionPulseScale(static_cast<uint32_t>(OSTicksToMilliseconds(OSGetSystemTime())));
+            const glm::vec4 outerColorPulsed = pulseRgb(selectionBlurOuterColorIntensity, pulse);
+            const glm::vec4 innerColorPulsed = pulseRgb(selectionBlurInnerColorIntensity, pulse);
+
             GX2SetDepthOnlyControl(GX2_ENABLE, GX2_DISABLE, GX2_COMPARE_FUNC_LEQUAL);
             m_strokeView = glm::scale(m_iconView, glm::vec3(selectionBlurOuterSize, selectionBlurOuterSize, 0.0f));
             ShaderFractalColor::instance()->setShaders();
@@ -231,14 +241,14 @@ void GameIcon::draw(CVideo *pVideo, const glm::mat4 &projectionMtx, const glm::m
             ShaderFractalColor::instance()->setModelViewMtx(m_strokeView);
             ShaderFractalColor::instance()->setFractalColor(strokeFractalEnable);
             ShaderFractalColor::instance()->setBlurBorder(selectionBlurOuterBorderSize);
-            ShaderFractalColor::instance()->setColorIntensity(selectionBlurOuterColorIntensity);
+            ShaderFractalColor::instance()->setColorIntensity(outerColorPulsed);
             ShaderFractalColor::instance()->setAlphaFadeOut(*alphaFadeOut);
             ShaderFractalColor::instance()->setAttributeBuffer();
             ShaderFractalColor::instance()->draw();
 
             m_strokeView = glm::scale(m_iconView, glm::vec3(selectionBlurInnerSize, selectionBlurInnerSize, 0.0f));
             ShaderFractalColor::instance()->setBlurBorder(selectionBlurInnerBorderSize);
-            ShaderFractalColor::instance()->setColorIntensity(selectionBlurInnerColorIntensity);
+            ShaderFractalColor::instance()->setColorIntensity(innerColorPulsed);
             ShaderFractalColor::instance()->draw();
             GX2SetDepthOnlyControl(GX2_ENABLE, GX2_ENABLE, GX2_COMPARE_FUNC_LEQUAL);
         }

@@ -12,7 +12,7 @@ function run(command,args) {
   if(result.error) throw result.error;
   if(result.status!==0) throw Error(`${path.basename(command)} failed (${result.status??result.signal})`);
 }
-for(const name of ['navigation','library','stability','rounded','edgebleed','loading-selection','homebrew-policy','history-save','reconcile','metadata-cache','disc-state','icon-plan','launch-log','update-core','name-cache','sync-file','string-tools']) {
+for(const name of ['navigation','library','stability','rounded','edgebleed','loading-selection','homebrew-policy','history-save','reconcile','metadata-cache','disc-state','icon-plan','launch-log','update-core','name-cache','sync-file','string-tools','selection-pulse']) {
   const executable=path.join(output,name+(process.platform==='win32'?'.exe':''));
   run(compiler,['-std=c++17','-Wall','-Wextra','-I',path.join(root,'launcher/src'),'-I',path.join(root,'launcher/tests/stubs'),path.join(root,`launcher/tests/${name}.cpp`),'-o',executable]);
   let args=[];
