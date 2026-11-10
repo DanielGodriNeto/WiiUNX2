@@ -81,20 +81,25 @@ test('D-pad has a solid white cross of plausible size', () => {
 });
 
 test('D-pad horizontal and vertical arms are white', () => {
-  for(const [x,y] of [[7,14],[20,14],[14,7],[14,20]]) assert.ok(isWhite(pixel(dpad,x,y)),`arm pixel ${x},${y} is not white`);
+  for(const [x,y] of [[8,15],[21,15],[15,8],[15,21]]) assert.ok(isWhite(pixel(dpad,x,y)),`arm pixel ${x},${y} is not white`);
 });
 
 test('D-pad diagonal corners between the arms are not white', () => {
-  for(const [x,y] of [[7,7],[20,7],[7,20],[20,20]]) assert.ok(!isWhite(pixel(dpad,x,y)),`diagonal pixel ${x},${y} is white`);
+  for(const [x,y] of [[8,8],[21,8],[8,21],[21,21]]) assert.ok(!isWhite(pixel(dpad,x,y)),`diagonal pixel ${x},${y} is white`);
 });
 
-test('D-pad is 4-fold symmetric inside the central box', () => {
-  for(let y=5;y<23;y++) {
-    for(let x=5;x<23;x++) {
-      const difference=Math.abs(luma(pixel(dpad,x,y))-luma(pixel(dpad,27-y,x)));
-      assert.ok(difference<=40,`pixel ${x},${y} differs from its 90-degree rotation by ${difference.toFixed(1)}`);
+test('D-pad glyph is centered within its circular badge', () => {
+  const centroid=predicate=>{
+    let count=0,x=0,y=0;
+    for(let py=0;py<dpad.height;py++) for(let px=0;px<dpad.width;px++) {
+      if(predicate(pixel(dpad,px,py))) {count++;x+=px;y+=py;}
     }
-  }
+    return {x:x/count,y:y/count};
+  };
+  const glyph=centroid(isWhite);
+  const circle=centroid(([, , ,a])=>a>220);
+  assert.ok(Math.abs(glyph.x-circle.x)<=0.5,`horizontal offset is ${(glyph.x-circle.x).toFixed(2)} px`);
+  assert.ok(Math.abs(glyph.y-circle.y)<=0.5,`vertical offset is ${(glyph.y-circle.y).toFixed(2)} px`);
 });
 
 test('D-pad is distinct from the plus glyph', () => {

@@ -1,5 +1,18 @@
 # WiiUNX2 changelog
 
+## 0.6.12-rc.3 — Release candidate
+
+- Arrange the search keyboard in QWERTY order and center the D-pad glyph in its badge.
+- Keep the profile ring visible and add a subtle, original color drift to the selected tile outline.
+- Record the latest Wii U disc and launch-diagnostic reports in the project documentation.
+
+### Validation and known limitations
+
+- Wii U RPX cross-build and source-publication/history checks passed.
+- Standalone Node tests: 33 passed, 3 skipped due to Windows filesystem limitations.
+- The full host suite remains incomplete: Windows App Control blocked the generated `library.exe` test binary.
+- UI changes have not been validated on Wii U hardware. Wii-disc support remains unimplemented.
+
 ## 0.6.12-rc.2 — Release candidate
 
 - Replace the optional synthetic UI tones with shorter, sharper procedural click cues for navigation, confirm, and back.

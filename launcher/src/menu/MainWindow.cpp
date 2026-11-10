@@ -35,7 +35,7 @@ extern "C" int32_t ACPCheckTitleLaunchByTitleListTypeEx(MCPTitleListType*,uint32
 
 static const char *dockNames[] = {"Friend List", "Internet Browser", "Download Management", "Nintendo eShop", "Mii Maker", "Data Management", "Controllers", "System Settings", "Power"};
 static const char *dockFiles[] = {"nxFriends.png", "nxBrowser.png", "nxDownloads.png", "nxShop.png", "nxMii.png", "nxData.png", "nxControllers.png", "nxSettings.png", "nxPower.png"};
-static const char *keys="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+static const char *keys=nx::keyboardCharacters();
 static bool isMenu(uint64_t id) { return (id >> 32) == 0x00050010 && ((id & 0xffffff00) == 0x10040000 || (id & 0xffffff00) == 0x10040100 || (id & 0xffffff00) == 0x10040200); }
 static constexpr uint64_t discTileId=0xfffffffffffffffeULL;
 static nx::DiscSample readDisc(MCPTitleListType &title,uint32_t *otherType=nullptr) {
@@ -272,12 +272,12 @@ void MainWindow::process() {
 void MainWindow::draw(CVideo *v) {
     std::lock_guard<std::recursive_mutex> guard(tilesMutex);
     drawImage(background,v,640,360);
-    if(focusRow==2) drawImage(*ring,v,80,75);
+    drawImage(*ring,v,80,75);
     auto current=std::find_if(accounts.begin(),accounts.end(),[this](const Account &a){return a.slot==activeSlot;});
     if(current!=accounts.end() && current->image) {
         current->image->setScaleX(52.f/current->data->getWidth());current->image->setScaleY(52.f/current->data->getHeight());
         drawImage(*current->image,v,80,75);
-    } else drawImage(*profile,v,80,75);
+    } else {profile->setScale(52.f/64);drawImage(*profile,v,80,75);profile->setScale(1);}
     if(focusRow==2) drawText(profileName,v,128,75);
     drawText(clockText,v,1070,76);
     network->setAlpha(connected ? 1.f : .22f);
@@ -295,7 +295,16 @@ void MainWindow::draw(CVideo *v) {
         float x=nx::tileFirstX+i*float(nx::tileStep)-scroll;
         if(x < nx::cullLeft || x > nx::cullRight) continue;
         drawImage(*tileShadow,v,x,330);
-        if(i==selected && focusRow==0 && !visible.empty()) drawImage(*tileFocus,v,x,330);
+        if(i==selected && focusRow==0 && !visible.empty()) {
+            const float phase=float(frame%480)*(6.28318530718f/480.f);
+            const float offset=0.03f;
+            tileFocus->setColorIntensity(glm::vec4(
+                0.97f+offset*std::sin(phase),
+                0.97f+offset*std::sin(phase+2.0943951f),
+                0.97f+offset*std::sin(phase+4.1887902f),
+                1.0f));
+            drawImage(*tileFocus,v,x,330);
+        }
         if(i<visible.size() && tiles[visible[i]].image) drawImage(*tiles[visible[i]].image,v,x,330);
         else drawImage(*tileBlank,v,x,330);
     }

@@ -4,6 +4,9 @@
 #include <algorithm>
 #include <cstdint>
 namespace nx {
+inline const char *keyboardCharacters() {
+    return "QWERTYUIOPASDFGHJKL0ZXCVBNM123456789";
+}
 template<class Items,class Id>
 inline size_t selectionAfterRefresh(const Items &items,uint64_t selectedId,bool interacted,Id id) {
     if(interacted) for(size_t i=0;i<items.size();++i) if(id(items[i])==selectedId) return i;

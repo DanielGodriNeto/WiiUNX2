@@ -17,6 +17,7 @@ Disc metadata (`meta.xml`) is read only when the monitor reports Inserted or Cha
 ## Unsupported or unknown disc states
 
 - Wii discs: not supported. A Wii disc is probably listed with app type `MCP_APP_TYPE_GAME_WII` (0x8000002E) in wut headers, but this has not been observed on hardware. It would be classed as Other, so no tile is shown.
+- Latest hardware report: the user says Wii U game discs work on their setup, while Wii-format discs do not. Insertion/removal timing, swaps, and the ODD entry reported for a Wii disc have not been independently recorded.
 - Can be determined without hardware: the wut header defines the app type values and the `MCPTitleListType` layout; the state machine handles any sample sequence.
 - Cannot be determined without hardware: whether a Wii disc appears in the ODD title list at all, its `path` and `meta.xml` layout, whether `SYSLaunchTitle` or a path launch starts it, and how the stock menu hands over to Wii mode (which only exits by reboot). No claim of Wii disc support is made.
 - Other states not handled: dirty or unreadable discs (expected to appear as Error or Empty), a disc inserted while the drive is busy, discs of another region, and discs needing an update. The 2 s base interval is not proven to match stock timing.

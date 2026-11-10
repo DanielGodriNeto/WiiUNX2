@@ -2,6 +2,10 @@
 #include <cassert>
 #include <iostream>
 int main() {
+    assert(std::string(nx::keyboardCharacters()).substr(0,10)=="QWERTYUIOP");
+    assert(std::string(nx::keyboardCharacters()).substr(10,10)=="ASDFGHJKL0");
+    assert(std::string(nx::keyboardCharacters()).substr(20,10)=="ZXCVBNM123");
+    assert(std::string(nx::keyboardCharacters()).substr(30)=="456789");
     assert(nx::matches("Pok\xc3\xa9mon Rumble U","pokemon"));
     assert(nx::matches("SUPER MARIO 3D WORLD","Mario 3d"));
     assert(nx::matches("A\xc3\xa7\xc3\xa3o","acao"));

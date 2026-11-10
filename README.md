@@ -43,6 +43,10 @@ metadata work on workers. Native play history is read-only. Recent homebrew
 launch dates are stored locally on SD and never uploaded. Custom diagnostics
 are disabled by default; see [SECURITY.md](SECURITY.md).
 
+The on-screen search keyboard uses a QWERTY letter layout. The selected
+software tile has a slow, subtle color drift on its existing gradient outline,
+and the active user avatar has a circular accent ring.
+
 ## Build and validate
 
 For host-only validation, install Node.js 18+ and a C++17 compiler, then run
